@@ -1,0 +1,35 @@
+# ==========================================
+# 1. Virtual Environment (ซ่อน venv ใน backend)
+# ==========================================
+backend/venv/
+**/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+
+# ==========================================
+# 2. Environment Variables & Secret Keys
+# ==========================================
+# ซ่อนไฟล์ .env ใน backend
+backend/.env
+**/.env
+
+# ยกเว้นไฟล์ Example เพื่อให้ Git ติดตามโครงสร้างได้
+!.env.example
+!**/.env.example
+!.env.docker.example
+
+# ==========================================
+# 3. Django Staticfiles & Media Uploads
+# ==========================================
+backend/staticfiles/
+backend/media/
+
+# ==========================================
+# 4. OS & IDE System Files
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
