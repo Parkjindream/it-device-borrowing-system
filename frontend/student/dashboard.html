@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>หน้าหลักนักศึกษา — ศูนย์ยืม-คืนอุปกรณ์ไอที</title>
+<link rel="icon" href="../assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="antialiased">
+
+<!-- ===== Header ===== -->
+<header class="bg-white border-b border-[var(--line)] sticky top-0 z-40">
+  <div class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <img src="../assets/img/logo.png" alt="โลโก้" class="brand-logo">
+      <span class="font-display font-semibold text-[var(--navy)]">ศูนย์ยืม-คืนอุปกรณ์ไอที</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span id="welcome-text" class="text-sm text-[var(--ink)]/70 hidden sm:inline"></span>
+      <button id="open-profile-btn" class="btn btn-outline-navy !py-1.5 !px-4 text-sm">โปรไฟล์ของฉัน</button>
+      <button id="logout-btn" class="btn btn-outline-navy !py-1.5 !px-4 text-sm">ออกจากระบบ</button>
+    </div>
+  </div>
+</header>
+
+<div id="suspended-banner" class="hidden bg-[#fdecec] text-[#c33c3c] text-sm text-center py-2.5 px-4"></div>
+
+<main class="max-w-6xl mx-auto px-5 py-8">
+
+  <!-- ===== Tabs ===== -->
+  <div class="flex gap-2 mb-8 border-b border-[var(--line)]">
+    <button data-tab="borrow" class="tab-btn px-4 py-2.5 text-sm font-medium font-display border-b-2 border-[var(--navy)] text-[var(--navy)]">ยืมอุปกรณ์</button>
+    <button data-tab="history" class="tab-btn px-4 py-2.5 text-sm font-medium font-display border-b-2 border-transparent text-[var(--ink)]/55">ประวัติการยืมของฉัน</button>
+  </div>
+
+  <!-- ===== Tab: ยืมอุปกรณ์ ===== -->
+  <section id="tab-borrow">
+    <div class="flex flex-wrap gap-3 mb-6">
+      <input id="search-input" type="text" placeholder="ค้นหาชื่ออุปกรณ์..."
+        class="flex-1 min-w-[200px] rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm focus:border-[var(--navy)] outline-none">
+      <select id="category-select" class="rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none">
+        <option value="">ทุกหมวดหมู่</option>
+      </select>
+    </div>
+    <div id="equipment-grid" class="grid sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    <p id="equipment-empty" class="hidden text-center text-sm text-[var(--ink)]/50 py-12">ไม่พบอุปกรณ์ที่ตรงกับคำค้นหา</p>
+  </section>
+
+  <!-- ===== Tab: ประวัติการยืม ===== -->
+  <section id="tab-history" class="hidden">
+    <div id="booking-list" class="space-y-3"></div>
+    <p id="booking-empty" class="hidden text-center text-sm text-[var(--ink)]/50 py-12">ยังไม่มีประวัติการยืม</p>
+  </section>
+</main>
+
+<!-- ===== Modal: จองอุปกรณ์ ===== -->
+<div id="booking-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-5">
+  <div class="surface rounded-2xl p-6 w-full max-w-sm">
+    <div class="rounded-xl overflow-hidden mb-4 bg-[var(--paper)]" style="aspect-ratio: 16/9;">
+      <img id="modal-equipment-image" src="" alt="" class="w-full h-full object-contain p-2">
+    </div>
+    <h3 class="font-display font-semibold text-lg mb-1" id="modal-equipment-name"></h3>
+    <p class="text-sm text-[var(--ink)]/60 mb-5" id="modal-equipment-meta"></p>
+
+    <div id="modal-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
+
+    <form id="booking-form">
+      <input type="hidden" name="equipment_id">
+      <label class="block mb-4">
+        <span class="text-sm font-medium">วันเริ่มยืม</span>
+        <input type="date" name="start_date" required class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      </label>
+      <label class="block mb-5">
+        <span class="text-sm font-medium">วันครบกำหนดคืน</span>
+        <input type="date" name="end_date" required class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      </label>
+      <div class="flex gap-3">
+        <button type="button" id="modal-cancel-btn" class="btn btn-outline-navy flex-1">ยกเลิก</button>
+        <button type="submit" id="modal-submit-btn" class="btn btn-primary flex-1">ยืนยันจอง</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Modal: โปรไฟล์ของฉัน ===== -->
+<div id="profile-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-5">
+  <div class="surface rounded-2xl p-6 w-full max-w-sm">
+    <h3 class="font-display font-semibold text-lg mb-5">โปรไฟล์ของฉัน</h3>
+
+    <div id="profile-tab-info" class="flex gap-2 mb-5 border-b border-[var(--line)]">
+      <button data-profile-tab="edit" class="profile-tab-btn px-3 py-2 text-sm font-medium border-b-2 border-[var(--navy)] text-[var(--navy)]">แก้ไขข้อมูล</button>
+      <button data-profile-tab="password" class="profile-tab-btn px-3 py-2 text-sm font-medium border-b-2 border-transparent text-[var(--ink)]/55">เปลี่ยนรหัสผ่าน</button>
+    </div>
+
+    <!-- แก้ไขชื่อ-นามสกุล -->
+    <form id="profile-form">
+      <div id="profile-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
+      <div id="profile-success" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#eafaf3;color:#1f7a4d;"></div>
+
+      <label class="block mb-3 text-sm text-[var(--ink)]/60">
+        อีเมล (แก้ไขไม่ได้ — ติดต่อเจ้าหน้าที่หากต้องเปลี่ยน)
+        <input id="profile-email-display" type="text" disabled class="mt-1 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm bg-gray-50 text-[var(--ink)]/50">
+      </label>
+      <label class="block mb-4">
+        <span class="text-sm font-medium">ชื่อ</span>
+        <input type="text" name="first_name" required class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      </label>
+      <label class="block mb-5">
+        <span class="text-sm font-medium">นามสกุล</span>
+        <input type="text" name="last_name" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      </label>
+      <div class="flex gap-3">
+        <button type="button" id="profile-modal-close" class="btn btn-outline-navy flex-1">ปิด</button>
+        <button type="submit" class="btn btn-primary flex-1">บันทึก</button>
+      </div>
+    </form>
+
+    <!-- เปลี่ยนรหัสผ่าน -->
+    <form id="password-form" class="hidden">
+      <div id="password-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
+      <div id="password-success" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#eafaf3;color:#1f7a4d;"></div>
+
+      <label class="block mb-4">
+        <span class="text-sm font-medium">รหัสผ่านปัจจุบัน</span>
+        <input type="password" name="old_password" required class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      </label>
+      <label class="block mb-5">
+        <span class="text-sm font-medium">รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)</span>
+        <input type="password" name="new_password" required minlength="8" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      </label>
+      <div class="flex gap-3">
+        <button type="button" id="password-modal-close" class="btn btn-outline-navy flex-1">ปิด</button>
+        <button type="submit" class="btn btn-primary flex-1">เปลี่ยนรหัสผ่าน</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/auth-guard.js"></script>
+<script src="../assets/js/student-dashboard.js"></script>
+</body>
+</html>
