@@ -2,7 +2,7 @@
 
 โปรเจกต์นี้มี 2 ส่วนแยกกัน:
 - **`backend/`** — Django + Django REST Framework + PostgreSQL
-- **`frontend/`** — HTML + Tailwind CSS (CDN) + JavaScript ล้วน (ไม่ใช้ framework ใด ๆ)
+- **`frontend/`** — HTML + Tailwind CSS (CDN) + JavaScript 
 
 ทั้งสองส่วนคุยกันผ่าน REST API เท่านั้น
 
