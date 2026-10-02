@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Arduino Uno">
+<defs><linearGradient id="pcb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a8f9b"/><stop offset="1" stop-color="#0d5f6b"/></linearGradient>
+<linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef0f4"/><stop offset="1" stop-color="#aab0bc"/></linearGradient></defs>
+<ellipse cx="200" cy="262" rx="150" ry="10" fill="#000" opacity=".12"/>
+<rect x="46" y="60" width="308" height="196" rx="16" fill="url(#pcb)"/>
+<rect x="30" y="94" width="68" height="60" rx="3" fill="url(#metal)"/><rect x="38" y="102" width="54" height="44" rx="2" fill="#8d94a3"/>
+<rect x="42" y="196" width="46" height="46" rx="6" fill="#15171c"/><circle cx="65" cy="219" r="14" fill="#2a2d36"/>
+<rect x="118" y="68" width="220" height="20" rx="2" fill="#15171c"/>
+<g fill="#e8c35a"><circle cx="128" cy="78" r="2.6"/><circle cx="144" cy="78" r="2.6"/><circle cx="160" cy="78" r="2.6"/><circle cx="176" cy="78" r="2.6"/><circle cx="192" cy="78" r="2.6"/><circle cx="208" cy="78" r="2.6"/><circle cx="224" cy="78" r="2.6"/><circle cx="240" cy="78" r="2.6"/><circle cx="264" cy="78" r="2.6"/><circle cx="280" cy="78" r="2.6"/><circle cx="296" cy="78" r="2.6"/><circle cx="312" cy="78" r="2.6"/><circle cx="328" cy="78" r="2.6"/></g>
+<rect x="150" y="226" width="188" height="20" rx="2" fill="#15171c"/>
+<g fill="#e8c35a"><circle cx="160" cy="236" r="2.6"/><circle cx="176" cy="236" r="2.6"/><circle cx="192" cy="236" r="2.6"/><circle cx="208" cy="236" r="2.6"/><circle cx="224" cy="236" r="2.6"/><circle cx="240" cy="236" r="2.6"/><circle cx="264" cy="236" r="2.6"/><circle cx="280" cy="236" r="2.6"/><circle cx="296" cy="236" r="2.6"/><circle cx="312" cy="236" r="2.6"/><circle cx="328" cy="236" r="2.6"/></g>
+<rect x="196" y="112" width="120" height="44" rx="3" fill="#15171c"/>
+<g fill="#aab0bc"><rect x="204" y="106" width="3" height="8"/><rect x="216" y="106" width="3" height="8"/><rect x="228" y="106" width="3" height="8"/><rect x="240" y="106" width="3" height="8"/><rect x="252" y="106" width="3" height="8"/><rect x="264" y="106" width="3" height="8"/><rect x="276" y="106" width="3" height="8"/><rect x="288" y="106" width="3" height="8"/><rect x="300" y="106" width="3" height="8"/></g>
+<rect x="128" y="118" width="46" height="46" rx="4" fill="#1b1e26"/><circle cx="151" cy="141" r="10" fill="#c9ced8"/>
+<circle cx="120" cy="196" r="7" fill="#e8a33d"/><rect x="140" y="188" width="20" height="16" rx="2" fill="#dfe3ea"/>
+<text x="204" y="196" font-family="sans-serif" font-size="30" font-weight="800" fill="#fff" opacity=".92">UNO</text>
+<circle cx="292" cy="182" r="4" fill="#5cf08b"/><circle cx="306" cy="182" r="4" fill="#ffd166"/>
+</svg>

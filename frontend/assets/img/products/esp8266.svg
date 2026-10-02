@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="ESP8266 NodeMCU">
+<defs><linearGradient id="pcb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b5fd0"/><stop offset="1" stop-color="#1a3a86"/></linearGradient>
+<linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef0f4"/><stop offset="1" stop-color="#a9afbc"/></linearGradient></defs>
+<ellipse cx="200" cy="264" rx="150" ry="10" fill="#000" opacity=".12"/>
+<rect x="54" y="72" width="292" height="158" rx="10" fill="url(#pcb)"/>
+<g fill="#e8c35a"><g id="r"><circle cx="76" cy="86" r="3"/><circle cx="94" cy="86" r="3"/><circle cx="112" cy="86" r="3"/><circle cx="130" cy="86" r="3"/><circle cx="148" cy="86" r="3"/><circle cx="166" cy="86" r="3"/><circle cx="184" cy="86" r="3"/><circle cx="202" cy="86" r="3"/><circle cx="220" cy="86" r="3"/><circle cx="238" cy="86" r="3"/><circle cx="256" cy="86" r="3"/><circle cx="274" cy="86" r="3"/><circle cx="292" cy="86" r="3"/><circle cx="310" cy="86" r="3"/><circle cx="328" cy="86" r="3"/></g>
+<use href="#r" y="132"/></g>
+<rect x="206" y="108" width="98" height="82" rx="4" fill="url(#metal)"/>
+<rect x="214" y="116" width="82" height="66" rx="3" fill="#c3c9d4"/>
+<text x="220" y="150" font-family="sans-serif" font-size="13" font-weight="800" fill="#2b2f3a">ESP8266</text>
+<text x="222" y="168" font-family="sans-serif" font-size="10" fill="#2b2f3a" opacity=".7">NodeMCU</text>
+<rect x="34" y="120" width="46" height="30" rx="3" fill="url(#metal)"/><rect x="40" y="126" width="34" height="18" rx="2" fill="#7c8391"/>
+<rect x="104" y="118" width="46" height="46" rx="4" fill="#15171c"/>
+<rect x="164" y="126" width="26" height="18" rx="3" fill="#0d0f14" stroke="#4a5170"/><rect x="164" y="152" width="26" height="18" rx="3" fill="#0d0f14" stroke="#4a5170"/>
+<circle cx="120" cy="190" r="5" fill="#5cf08b"/><circle cx="140" cy="190" r="5" fill="#ffd166"/>
+</svg>

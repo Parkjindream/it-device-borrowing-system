@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Raspberry Pi">
+<defs><linearGradient id="pcb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2f9e57"/><stop offset="1" stop-color="#1c6e3c"/></linearGradient>
+<linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef0f4"/><stop offset="1" stop-color="#aab0bc"/></linearGradient></defs>
+<ellipse cx="200" cy="268" rx="150" ry="11" fill="#000" opacity=".12"/>
+<rect x="50" y="70" width="300" height="190" rx="14" fill="url(#pcb)"/>
+<g fill="#0e0f13"><circle cx="66" cy="86" r="6"/><circle cx="334" cy="86" r="6"/><circle cx="66" cy="244" r="6"/><circle cx="334" cy="244" r="6"/></g>
+<g fill="#f3e9c6"><circle cx="66" cy="86" r="2.5"/><circle cx="334" cy="86" r="2.5"/><circle cx="66" cy="244" r="2.5"/><circle cx="334" cy="244" r="2.5"/></g>
+<rect x="92" y="78" width="200" height="22" rx="3" fill="#15171c"/>
+<g fill="#e8c35a"><circle cx="102" cy="85" r="2.6"/><circle cx="102" cy="94" r="2.6"/><circle cx="116" cy="85" r="2.6"/><circle cx="116" cy="94" r="2.6"/><circle cx="130" cy="85" r="2.6"/><circle cx="130" cy="94" r="2.6"/><circle cx="144" cy="85" r="2.6"/><circle cx="144" cy="94" r="2.6"/><circle cx="158" cy="85" r="2.6"/><circle cx="158" cy="94" r="2.6"/><circle cx="172" cy="85" r="2.6"/><circle cx="172" cy="94" r="2.6"/><circle cx="186" cy="85" r="2.6"/><circle cx="186" cy="94" r="2.6"/><circle cx="200" cy="85" r="2.6"/><circle cx="200" cy="94" r="2.6"/><circle cx="214" cy="85" r="2.6"/><circle cx="214" cy="94" r="2.6"/><circle cx="228" cy="85" r="2.6"/><circle cx="228" cy="94" r="2.6"/><circle cx="242" cy="85" r="2.6"/><circle cx="242" cy="94" r="2.6"/><circle cx="256" cy="85" r="2.6"/><circle cx="256" cy="94" r="2.6"/><circle cx="270" cy="85" r="2.6"/><circle cx="270" cy="94" r="2.6"/><circle cx="284" cy="85" r="2.6"/><circle cx="284" cy="94" r="2.6"/></g>
+<rect x="112" y="130" width="74" height="74" rx="6" fill="url(#metal)"/>
+<rect x="124" y="142" width="50" height="50" rx="4" fill="#c8ced9"/>
+<rect x="204" y="142" width="34" height="34" rx="4" fill="#15171c"/>
+<rect x="60" y="150" width="34" height="14" rx="2" fill="#15171c"/>
+<rect x="60" y="176" width="26" height="12" rx="2" fill="#15171c"/>
+<rect x="60" y="200" width="30" height="34" rx="3" fill="#1a1c22"/>
+<rect x="318" y="106" width="50" height="46" rx="3" fill="url(#metal)"/><rect x="326" y="114" width="34" height="30" rx="2" fill="#8d94a3"/>
+<rect x="318" y="160" width="50" height="46" rx="3" fill="url(#metal)"/><rect x="326" y="168" width="34" height="30" rx="2" fill="#8d94a3"/>
+<rect x="312" y="214" width="56" height="40" rx="3" fill="url(#metal)"/><rect x="322" y="222" width="36" height="24" rx="2" fill="#6f7686"/>
+<rect x="150" y="226" width="60" height="20" rx="3" fill="#dcdfe6"/>
+<text x="250" y="240" font-family="sans-serif" font-size="14" font-weight="700" fill="#f3f7f4" opacity=".9">Pi 4</text>
+</svg>

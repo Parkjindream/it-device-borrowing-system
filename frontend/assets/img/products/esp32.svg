@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="ESP32">
+<defs><linearGradient id="pcb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22262f"/><stop offset="1" stop-color="#0e1016"/></linearGradient>
+<linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef0f4"/><stop offset="1" stop-color="#a9afbc"/></linearGradient></defs>
+<ellipse cx="200" cy="264" rx="150" ry="10" fill="#000" opacity=".12"/>
+<rect x="54" y="76" width="292" height="150" rx="10" fill="url(#pcb)"/>
+<g fill="#e8c35a"><g id="r"><circle cx="76" cy="90" r="3"/><circle cx="94" cy="90" r="3"/><circle cx="112" cy="90" r="3"/><circle cx="130" cy="90" r="3"/><circle cx="148" cy="90" r="3"/><circle cx="166" cy="90" r="3"/><circle cx="184" cy="90" r="3"/><circle cx="202" cy="90" r="3"/><circle cx="220" cy="90" r="3"/><circle cx="238" cy="90" r="3"/><circle cx="256" cy="90" r="3"/><circle cx="274" cy="90" r="3"/><circle cx="292" cy="90" r="3"/><circle cx="310" cy="90" r="3"/><circle cx="328" cy="90" r="3"/></g>
+<use href="#r" y="122"/></g>
+<rect x="186" y="112" width="112" height="76" rx="4" fill="url(#metal)"/>
+<rect x="196" y="122" width="92" height="56" rx="3" fill="#c3c9d4"/>
+<text x="206" y="156" font-family="sans-serif" font-size="16" font-weight="800" fill="#2b2f3a">ESP32</text>
+<path d="M298 132h28v-10h14v22h-14v-10h-14z" fill="none" stroke="#e8a33d" stroke-width="3" stroke-linejoin="round" transform="translate(-4,10)"/>
+<rect x="34" y="126" width="46" height="30" rx="3" fill="url(#metal)"/><rect x="40" y="132" width="34" height="18" rx="2" fill="#7c8391"/>
+<rect x="100" y="126" width="30" height="20" rx="3" fill="#15171c" stroke="#3a3f4b"/><rect x="140" y="126" width="30" height="20" rx="3" fill="#15171c" stroke="#3a3f4b"/>
+<circle cx="115" cy="176" r="5" fill="#5cf08b"/><circle cx="135" cy="176" r="5" fill="#e8a33d"/>
+</svg>
