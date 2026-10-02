@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>เข้าสู่ระบบ — ศูนย์ยืม-คืนอุปกรณ์ไอที</title>
+<link rel="icon" href="assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="antialiased min-h-screen flex flex-col" style="background: linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 100%);">
+
+<div id="api-status-banner"></div>
+
+<div class="flex-1 flex items-center justify-center px-5 py-12">
+  <div class="w-full max-w-sm">
+
+    <div class="text-center mb-8">
+      <a href="index.html">
+        <img src="assets/img/logo.png" alt="โลโก้ศูนย์ยืม-คืนอุปกรณ์ไอที" class="w-16 h-16 mx-auto mb-4">
+      </a>
+      <h1 class="font-display font-semibold text-white text-xl">เข้าสู่ระบบ</h1>
+      <p class="text-white/60 text-sm mt-1">ศูนย์ยืม-คืนอุปกรณ์ไอที</p>
+    </div>
+
+    <form id="login-form" class="surface rounded-2xl p-7 shadow-2xl">
+      <div id="form-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
+
+      <label class="block mb-4">
+        <span class="text-sm font-medium text-[var(--ink)]">อีเมล</span>
+        <input type="email" name="email" required autocomplete="email"
+          class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none"
+          placeholder="student@example.ac.th">
+      </label>
+
+      <label class="block mb-2">
+        <span class="text-sm font-medium text-[var(--ink)]">รหัสผ่าน</span>
+        <input type="password" name="password" required autocomplete="current-password"
+          class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none"
+          placeholder="••••••••">
+      </label>
+
+      <div class="text-right mb-5">
+        <a href="forgot-password.html" class="text-xs text-[var(--navy)]/70 hover:text-[var(--navy)]">ลืมรหัสผ่าน?</a>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn btn-primary btn-block">เข้าสู่ระบบ</button>
+    </form>
+
+    <p class="text-center text-white/50 text-xs mt-6">
+      หากยังไม่มีบัญชี กรุณาติดต่อเจ้าหน้าที่ห้องโสตทัศนศึกษาเพื่อลงทะเบียน
+    </p>
+  </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/login.js"></script>
+</body>
+</html>
