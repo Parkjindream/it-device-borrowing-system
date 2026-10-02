@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ศูนย์ยืม-คืนอุปกรณ์ไอที</title>
+<link rel="icon" href="assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="antialiased">
+
+<!-- ===== Navbar ===== -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2.5">
+      <img src="assets/img/logo.png" alt="โลโก้ศูนย์ยืม-คืนอุปกรณ์ไอที" class="brand-logo">
+      <span class="font-display font-semibold text-[var(--navy)] text-lg leading-tight">ศูนย์ยืม-คืน<br class="hidden sm:block">อุปกรณ์ไอที</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-[var(--ink)]">
+      <a href="#หมวดหมู่" class="hover:text-[var(--navy)]">อุปกรณ์ให้ยืม</a>
+      <a href="#ขั้นตอน" class="hover:text-[var(--navy)]">ขั้นตอนการใช้งาน</a>
+      <a href="#จุดเด่น" class="hover:text-[var(--navy)]">จุดเด่นของระบบ</a>
+      <a href="#คำถาม" class="hover:text-[var(--navy)]">คำถามที่พบบ่อย</a>
+    </nav>
+    <a href="login.html" class="btn btn-primary !py-2 !px-5 text-sm">เข้าสู่ระบบ</a>
+  </div>
+</header>
+
+<!-- ===== Hero ===== -->
+<section class="relative overflow-hidden" style="background: linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 100%);">
+  <div class="max-w-6xl mx-auto px-5 py-20 md:py-28 grid md:grid-cols-2 gap-12 items-center relative z-10">
+    <div class="text-white">
+      <p class="text-[var(--amber)] font-display font-medium mb-4 text-sm tracking-wide">สำหรับนักศึกษาและเจ้าหน้าที่ในวิทยาลัย</p>
+      <h1 class="font-display font-semibold text-4xl md:text-5xl leading-tight mb-6">
+        ยืมอุปกรณ์ไอที<br>ของวิทยาลัย ง่ายกว่าที่คิด
+      </h1>
+      <p class="text-white/75 text-lg leading-relaxed mb-8 max-w-md">
+        จองโน้ตบุ๊ก กล้อง หรืออุปกรณ์ที่ต้องใช้ล่วงหน้าผ่านระบบออนไลน์
+        เช็คได้ทันทีว่าเหลือกี่เครื่อง ไม่ต้องเดินไปถามหน้าเคาน์เตอร์ให้เสียเวลา
+      </p>
+      <div class="flex flex-wrap gap-4">
+        <a href="login.html" class="btn btn-primary">เข้าสู่ระบบเพื่อจองอุปกรณ์</a>
+        <a href="#ขั้นตอน" class="btn btn-ghost">ดูขั้นตอนการใช้งาน</a>
+      </div>
+    </div>
+
+    <!-- ภาพประกอบ: การ์ดอุปกรณ์ลอยเป็นชั้น ๆ -->
+    <div class="relative h-72 md:h-96 hidden sm:block" aria-hidden="true">
+      <div class="absolute right-4 top-2 w-48 surface rounded-2xl p-4 shadow-xl rotate-[-4deg]">
+        <svg viewBox="0 0 48 48" class="w-9 h-9 mb-2" fill="none" stroke="var(--navy)" stroke-width="2.2"><rect x="6" y="9" width="36" height="24" rx="2"/><path d="M2 37h44l-3 4H5z" fill="var(--navy)" stroke="none"/></svg>
+        <p class="font-display font-medium text-sm text-[var(--ink)]">โน้ตบุ๊ก Dell</p>
+        <span class="badge badge-available mt-2">ว่าง 4/6</span>
+      </div>
+      <div class="absolute left-2 top-24 w-44 surface rounded-2xl p-4 shadow-xl rotate-[3deg]">
+        <svg viewBox="0 0 48 48" class="w-9 h-9 mb-2" fill="none" stroke="var(--teal)" stroke-width="2.2"><rect x="8" y="14" width="28" height="20" rx="3"/><circle cx="22" cy="24" r="6"/><rect x="17" y="8" width="10" height="7" rx="2"/></svg>
+        <p class="font-display font-medium text-sm text-[var(--ink)]">กล้องวิดีโอ</p>
+        <span class="badge badge-available mt-2">ว่าง 2/3</span>
+      </div>
+      <div class="absolute right-8 bottom-0 w-40 surface rounded-2xl p-4 shadow-xl rotate-[6deg]">
+        <svg viewBox="0 0 48 48" class="w-9 h-9 mb-2" fill="none" stroke="var(--amber-dark)" stroke-width="2.2"><rect x="14" y="6" width="20" height="30" rx="3"/><circle cx="24" cy="32" r="1.5" fill="var(--amber-dark)" stroke="none"/></svg>
+        <p class="font-display font-medium text-sm text-[var(--ink)]">แท็บเล็ต</p>
+        <span class="badge badge-awaiting mt-2">เหลือน้อย</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== แถบจุดเด่นสั้น ๆ ===== -->
+<section class="bg-[var(--navy-dark)] text-white">
+  <div class="max-w-6xl mx-auto px-5 py-8 grid sm:grid-cols-3 gap-6 text-sm">
+    <div class="flex items-start gap-3">
+      <svg class="w-6 h-6 text-[var(--amber)] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      <p class="text-white/85">จองล่วงหน้าได้ตลอด 24 ชั่วโมง ผ่านมือถือหรือคอมพิวเตอร์</p>
+    </div>
+    <div class="flex items-start gap-3">
+      <svg class="w-6 h-6 text-[var(--amber)] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+      <p class="text-white/85">เห็นจำนวนอุปกรณ์คงเหลือแบบเรียลไทม์ ก่อนตัดสินใจจอง</p>
+    </div>
+    <div class="flex items-start gap-3">
+      <svg class="w-6 h-6 text-[var(--amber)] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/></svg>
+      <p class="text-white/85">ทุกการรับ-คืนอุปกรณ์ ยืนยันตัวจริงโดยเจ้าหน้าที่เสมอ</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== หมวดหมู่อุปกรณ์ ===== -->
+<section id="หมวดหมู่" class="max-w-6xl mx-auto px-5 py-20">
+  <div class="flex items-end justify-between mb-8 flex-wrap gap-2">
+    <div>
+      <h2 class="font-display font-semibold text-2xl md:text-3xl text-[var(--navy)]">อุปกรณ์ที่ให้ยืม</h2>
+      <p class="text-[var(--ink)]/60 mt-1">จำนวนคงเหลือแบบเรียลไทม์จากระบบจริง — เข้าสู่ระบบเพื่อจองได้ทันที</p>
+    </div>
+  </div>
+  <div id="equipment-rail" class="category-rail">
+    <!-- โหลดจาก /api/public/equipment/ ด้วย JS ด้านล่าง (ไม่ต้องล็อกอิน) -->
+    <p class="text-sm text-[var(--ink)]/40 py-8">กำลังโหลดรายการอุปกรณ์...</p>
+  </div>
+</section>
+
+<!-- ===== ขั้นตอนการใช้งาน ===== -->
+<section id="ขั้นตอน" class="bg-white border-y border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-5 py-20">
+    <h2 class="font-display font-semibold text-2xl md:text-3xl text-[var(--navy)] mb-2">ใช้งานยังไง</h2>
+    <p class="text-[var(--ink)]/60 mb-12 max-w-xl">4 ขั้นตอนตั้งแต่จองจนคืนของ ไม่มีอะไรซับซ้อน</p>
+
+    <div class="timeline">
+      <div class="timeline-step">
+        <div class="timeline-num">1</div>
+        <h3 class="font-display font-medium mb-1.5">เข้าสู่ระบบ</h3>
+        <p class="text-sm text-[var(--ink)]/70 leading-relaxed">ล็อกอินด้วยอีเมลที่ลงทะเบียนไว้กับวิทยาลัย</p>
+      </div>
+      <div class="timeline-step">
+        <div class="timeline-num">2</div>
+        <h3 class="font-display font-medium mb-1.5">เลือกอุปกรณ์และวันยืม</h3>
+        <p class="text-sm text-[var(--ink)]/70 leading-relaxed">ดูจำนวนคงเหลือ เลือกวันเริ่มยืมและวันคืน กดจองได้เลย</p>
+      </div>
+      <div class="timeline-step">
+        <div class="timeline-num">3</div>
+        <h3 class="font-display font-medium mb-1.5">รับของที่เคาน์เตอร์</h3>
+        <p class="text-sm text-[var(--ink)]/70 leading-relaxed">แสดงรหัสการจองให้เจ้าหน้าที่ ตรวจสภาพแล้วยืนยันรับของ</p>
+      </div>
+      <div class="timeline-step">
+        <div class="timeline-num">4</div>
+        <h3 class="font-display font-medium mb-1.5">คืนตามกำหนด</h3>
+        <p class="text-sm text-[var(--ink)]/70 leading-relaxed">นำอุปกรณ์มาคืนก่อนหรือตรงวันครบกำหนด เจ้าหน้าที่ยืนยันรับคืน</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== จุดเด่นของระบบ ===== -->
+<section id="จุดเด่น" class="max-w-6xl mx-auto px-5 py-20">
+  <h2 class="font-display font-semibold text-2xl md:text-3xl text-[var(--navy)] mb-2">จุดเด่นของระบบ</h2>
+  <p class="text-[var(--ink)]/60 mb-12 max-w-xl">ออกแบบมาให้ทั้งนักศึกษาและเจ้าหน้าที่ทำงานง่ายขึ้นจริง ไม่ใช่แค่ย้ายกระดาษไปออนไลน์</p>
+
+  <div class="grid md:grid-cols-3 gap-5">
+    <div class="surface rounded-2xl p-7 md:col-span-2 md:row-span-1 bg-[var(--navy)] text-white">
+      <svg class="w-10 h-10 text-[var(--amber)] mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+      <h3 class="font-display font-medium text-lg mb-2">จำนวนคงเหลือแบบเรียลไทม์</h3>
+      <p class="text-white/75 text-sm leading-relaxed max-w-md">ทุกครั้งที่มีคนจอง ระบบจะกันซ้อนอัตโนมัติ คุณจึงเห็นตัวเลขที่เป็นจริงเสมอ ไม่ใช่ของหมดไปแล้วแต่หน้าจอยังโชว์ว่ามี</p>
+    </div>
+    <div class="surface rounded-2xl p-7">
+      <svg class="w-9 h-9 text-[var(--teal)] mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+      <h3 class="font-display font-medium mb-2">แจ้งเตือนก่อนครบกำหนด</h3>
+      <p class="text-[var(--ink)]/65 text-sm leading-relaxed">ระบบส่งอีเมลเตือนล่วงหน้า ก่อนถึงวันคืนและกรณีเกินกำหนดแล้ว</p>
+    </div>
+    <div class="surface rounded-2xl p-7">
+      <svg class="w-9 h-9 text-[var(--amber-dark)] mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16M6 15V9M12 15V5M18 15v-3"/></svg>
+      <h3 class="font-display font-medium mb-2">ดูประวัติการยืมย้อนหลัง</h3>
+      <p class="text-[var(--ink)]/65 text-sm leading-relaxed">ทุกครั้งที่ยืม-คืน ถูกบันทึกไว้ ดูย้อนหลังได้ตลอดเวลาในหน้าโปรไฟล์</p>
+    </div>
+    <div class="surface rounded-2xl p-7 md:col-span-2 bg-[var(--paper)]">
+      <svg class="w-9 h-9 text-[var(--navy)] mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/></svg>
+      <h3 class="font-display font-medium mb-2">ยืนยันโดยเจ้าหน้าที่ทุกครั้ง</h3>
+      <p class="text-[var(--ink)]/65 text-sm leading-relaxed max-w-md">การรับและคืนอุปกรณ์ต้องผ่านการตรวจสอบและกดยืนยันจากเจ้าหน้าที่เสมอ แม้จะมีรหัสการจองแล้วก็ตาม เพื่อป้องกันการสวมรอยหรือส่งต่อรหัสให้คนอื่น</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== คำถามที่พบบ่อย ===== -->
+<section id="คำถาม" class="bg-white border-y border-[var(--line)]">
+  <div class="max-w-3xl mx-auto px-5 py-20">
+    <h2 class="font-display font-semibold text-2xl md:text-3xl text-[var(--navy)] mb-8">คำถามที่พบบ่อย</h2>
+
+    <div class="space-y-3">
+      <details class="faq-item surface rounded-xl p-5" open>
+        <summary class="flex items-center justify-between font-display font-medium">
+          ใครยืมอุปกรณ์ผ่านระบบนี้ได้บ้าง
+          <span class="faq-icon text-[var(--navy)] text-xl">+</span>
+        </summary>
+        <p class="text-sm text-[var(--ink)]/70 mt-3 leading-relaxed">นักศึกษาที่มีบัญชีในระบบและไม่ได้ถูกพักสิทธิ์การจองอยู่ สามารถเข้าสู่ระบบและจองอุปกรณ์ได้ทันที</p>
+      </details>
+      <details class="faq-item surface rounded-xl p-5">
+        <summary class="flex items-center justify-between font-display font-medium">
+          จองแล้วต้องมารับของภายในกี่วัน
+          <span class="faq-icon text-[var(--navy)] text-xl">+</span>
+        </summary>
+        <p class="text-sm text-[var(--ink)]/70 mt-3 leading-relaxed">ระบบจะกำหนดเวลาหมดอายุการจองไว้ให้ (ดูได้ในหน้ารายละเอียดการจองของคุณ) ถ้าไม่มารับภายในเวลานั้น ระบบจะยกเลิกอัตโนมัติและคืนอุปกรณ์ให้คนอื่นจองต่อ</p>
+      </details>
+      <details class="faq-item surface rounded-xl p-5">
+        <summary class="flex items-center justify-between font-display font-medium">
+          ถ้าคืนอุปกรณ์ช้ากว่ากำหนด จะเป็นอะไรไหม
+          <span class="faq-icon text-[var(--navy)] text-xl">+</span>
+        </summary>
+        <p class="text-sm text-[var(--ink)]/70 mt-3 leading-relaxed">ถ้าคืนเกินกำหนดตามเกณฑ์ที่วิทยาลัยตั้งไว้ บัญชีของคุณจะถูกพักสิทธิ์การจองอุปกรณ์ใหม่ชั่วคราว โดยระบบจะปลดล็อกให้อัตโนมัติเมื่อครบกำหนด (ไม่กระทบการเข้าสู่ระบบหรือดูประวัติเดิม)</p>
+      </details>
+      <details class="faq-item surface rounded-xl p-5">
+        <summary class="flex items-center justify-between font-display font-medium">
+          ยกเลิกการจองที่ทำไว้ได้ไหม
+          <span class="faq-icon text-[var(--navy)] text-xl">+</span>
+        </summary>
+        <p class="text-sm text-[var(--ink)]/70 mt-3 leading-relaxed">ได้ ตราบใดที่ยังไม่ได้ไปรับอุปกรณ์จริง คุณสามารถกดยกเลิกได้เองในหน้า "ประวัติการยืมของฉัน"</p>
+      </details>
+      <details class="faq-item surface rounded-xl p-5">
+        <summary class="flex items-center justify-between font-display font-medium">
+          ลืมรหัสผ่านต้องทำยังไง
+          <span class="faq-icon text-[var(--navy)] text-xl">+</span>
+        </summary>
+        <p class="text-sm text-[var(--ink)]/70 mt-3 leading-relaxed">กดลิงก์ "ลืมรหัสผ่าน" ที่หน้าเข้าสู่ระบบ กรอกอีเมลที่ใช้ลงทะเบียนไว้ ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้ทางอีเมล</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA ปิดท้าย ===== -->
+<section style="background: linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 100%);">
+  <div class="max-w-4xl mx-auto px-5 py-16 text-center">
+    <h2 class="font-display font-semibold text-2xl md:text-3xl text-white mb-3">พร้อมยืมอุปกรณ์แล้วหรือยัง</h2>
+    <p class="text-white/70 mb-8">เข้าสู่ระบบด้วยบัญชีของคุณ แล้วเริ่มจองได้ทันที</p>
+    <a href="login.html" class="btn btn-primary">เข้าสู่ระบบ</a>
+  </div>
+</section>
+
+<!-- ===== Footer ===== -->
+<footer class="bg-white border-t border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-5 py-12 grid sm:grid-cols-2 md:grid-cols-4 gap-8">
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <img src="assets/img/logo.png" alt="โลโก้" class="brand-logo">
+        <span class="font-display font-semibold text-[var(--navy)]">ศูนย์ยืม-คืนอุปกรณ์ไอที</span>
+      </div>
+      <p class="text-sm text-[var(--ink)]/60 leading-relaxed">ระบบยืม-คืนอุปกรณ์ไอทีสำหรับนักศึกษาและเจ้าหน้าที่ในวิทยาลัย</p>
+    </div>
+    <div>
+      <h4 class="font-display font-medium mb-3 text-sm">ลิงก์ด่วน</h4>
+      <ul class="space-y-2 text-sm text-[var(--ink)]/65">
+        <li><a href="#หมวดหมู่" class="hover:text-[var(--navy)]">อุปกรณ์ให้ยืม</a></li>
+        <li><a href="#ขั้นตอน" class="hover:text-[var(--navy)]">ขั้นตอนการใช้งาน</a></li>
+        <li><a href="#คำถาม" class="hover:text-[var(--navy)]">คำถามที่พบบ่อย</a></li>
+        <li><a href="login.html" class="hover:text-[var(--navy)]">เข้าสู่ระบบ</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="font-display font-medium mb-3 text-sm">เวลาให้บริการเคาน์เตอร์</h4>
+      <p class="text-sm text-[var(--ink)]/65 leading-relaxed">จันทร์–ศุกร์ 08:30–16:30 น.<br>(ปรับตามปฏิทินวิทยาลัย)</p>
+    </div>
+    <div>
+      <h4 class="font-display font-medium mb-3 text-sm">ติดต่อเจ้าหน้าที่</h4>
+      <p class="text-sm text-[var(--ink)]/65 leading-relaxed">ห้องโสตทัศนศึกษา อาคาร 1<br>โทร. 0-0000-0000</p>
+    </div>
+  </div>
+  <div class="border-t border-[var(--line)] py-5 text-center text-xs text-[var(--ink)]/45">
+    © 2026 ศูนย์ยืม-คืนอุปกรณ์ไอที
+  </div>
+</footer>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script>
+// โหลดรายการอุปกรณ์จริงจากระบบมาโชว์บนหน้าแรก (endpoint นี้เปิดสาธารณะ ไม่ต้องล็อกอิน)
+(async () => {
+  const rail = document.getElementById("equipment-rail");
+  try {
+    const res = await fetch(`${API_BASE_URL}/public/equipment/`);
+    const items = await res.json();
+    if (!Array.isArray(items) || items.length === 0) {
+      rail.innerHTML = '<p class="text-sm text-[var(--ink)]/40 py-8">ยังไม่มีอุปกรณ์ในระบบ</p>';
+      return;
+    }
+    rail.innerHTML = items.map((eq) => `
+      <div class="category-card surface rounded-2xl p-4">
+        <div class="rounded-lg overflow-hidden mb-3 bg-[var(--paper)]" style="aspect-ratio:4/3;">
+          <img src="${equipmentImageSrc(eq)}" alt="${eq.name}" class="w-full h-full object-contain p-2" loading="lazy">
+        </div>
+        <p class="text-xs text-[var(--ink)]/50 mb-0.5">${eq.category}</p>
+        <p class="font-display font-medium text-sm mb-2">${eq.name}</p>
+        <span class="badge ${eq.available_units > 0 ? "badge-available" : "badge-cancelled"}">
+          ${eq.available_units > 0 ? `ว่าง ${eq.available_units}/${eq.total_units}` : "ไม่ว่างตอนนี้"}
+        </span>
+      </div>
+    `).join("");
+  } catch (e) {
+    rail.innerHTML = '<p class="text-sm text-[var(--ink)]/40 py-8">ไม่สามารถโหลดรายการอุปกรณ์ได้ในขณะนี้</p>';
+  }
+})();
+</script>
+</body>
+</html>
