@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>หน้าเจ้าหน้าที่ — ศูนย์ยืม-คืนอุปกรณ์ไอที</title>
+<link rel="icon" href="../assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="antialiased">
+
+<!-- ===== Header ===== -->
+<header class="bg-[var(--navy)] sticky top-0 z-40">
+  <div class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <img src="../assets/img/logo.png" alt="โลโก้" class="brand-logo">
+      <span class="font-display font-semibold text-white">แผงควบคุมเจ้าหน้าที่</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="welcome-text" class="text-sm text-white/70 hidden sm:inline"></span>
+      <button id="logout-btn" class="btn btn-ghost !py-1.5 !px-4 text-sm">ออกจากระบบ</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-5 py-8">
+
+  <!-- ===== Tabs ===== -->
+  <div class="flex gap-2 mb-8 border-b border-[var(--line)] flex-wrap">
+    <button data-tab="queue" class="tab-btn px-4 py-2.5 text-sm font-medium font-display border-b-2 border-[var(--navy)] text-[var(--navy)]">คิวรับ-คืนอุปกรณ์</button>
+    <button data-tab="inventory" class="tab-btn px-4 py-2.5 text-sm font-medium font-display border-b-2 border-transparent text-[var(--ink)]/55">จัดการคลังอุปกรณ์</button>
+    <button data-tab="students" class="tab-btn px-4 py-2.5 text-sm font-medium font-display border-b-2 border-transparent text-[var(--ink)]/55">จัดการนักศึกษา</button>
+    <button data-tab="settings" class="tab-btn px-4 py-2.5 text-sm font-medium font-display border-b-2 border-transparent text-[var(--ink)]/55">ตั้งค่าระบบ</button>
+    <button data-tab="notifications" class="tab-btn px-4 py-2.5 text-sm font-medium font-display border-b-2 border-transparent text-[var(--ink)]/55">ประวัติอีเมล</button>
+  </div>
+
+  <!-- ===== Tab: คิวรับ-คืน ===== -->
+  <section id="tab-queue">
+    <div id="summary-cards" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"></div>
+
+    <div class="surface rounded-2xl p-5 mb-6">
+      <p class="text-sm font-medium mb-2">ค้นหาด้วยรหัสการจอง (สแกน QR หรือพิมพ์เอง)</p>
+      <div class="flex gap-3">
+        <input id="lookup-input" type="text" placeholder="เช่น BK-XXXXXXXXXX"
+          class="flex-1 rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+        <button id="lookup-btn" class="btn btn-primary">ค้นหา</button>
+      </div>
+      <div id="lookup-result" class="hidden mt-4"></div>
+      <p id="lookup-not-found" class="hidden mt-4 text-sm text-[#c33c3c]">ไม่พบรายการจองนี้ในระบบ</p>
+    </div>
+
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display font-medium">รายการทั้งหมด</h3>
+      <select id="status-filter" class="rounded-lg border border-[var(--line)] px-3 py-2 text-sm outline-none">
+        <option value="">ทุกสถานะ</option>
+        <option value="awaiting_pickup">รอรับของ</option>
+        <option value="borrowed">กำลังยืม</option>
+        <option value="overdue">เกินกำหนด</option>
+        <option value="returned">คืนแล้ว</option>
+        <option value="cancelled">ยกเลิก</option>
+      </select>
+    </div>
+    <div id="queue-list" class="space-y-3"></div>
+    <p id="queue-empty" class="hidden text-center text-sm text-[var(--ink)]/50 py-12">ไม่มีรายการในสถานะนี้</p>
+  </section>
+
+  <!-- ===== Tab: จัดการคลังอุปกรณ์ ===== -->
+  <section id="tab-inventory" class="hidden">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-display font-medium">รุ่นอุปกรณ์ทั้งหมด</h3>
+      <button id="new-equipment-btn" class="btn btn-primary !py-2 !px-4 text-sm">+ เพิ่มรุ่นอุปกรณ์</button>
+    </div>
+    <div id="inventory-list" class="space-y-3"></div>
+  </section>
+
+  <!-- ===== Tab: จัดการนักศึกษา ===== -->
+  <section id="tab-students" class="hidden">
+    <div class="grid md:grid-cols-2 gap-6 mb-6">
+      <div class="surface rounded-2xl p-6">
+        <h3 class="font-display font-medium mb-4">เพิ่มนักศึกษา 1 คน</h3>
+        <div id="add-student-message" class="hidden mb-3 text-sm rounded-lg px-3 py-2.5"></div>
+        <form id="add-student-form" class="space-y-3">
+          <input name="email" type="email" required placeholder="อีเมล"
+            class="w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+          <div class="grid grid-cols-2 gap-3">
+            <input name="first_name" required placeholder="ชื่อ" class="rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+            <input name="last_name" placeholder="นามสกุล" class="rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+          </div>
+          <input name="student_id" placeholder="รหัสนักศึกษา (ถ้ามี)" class="w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+          <button type="submit" class="btn btn-primary btn-block">เพิ่มนักศึกษา</button>
+          <p class="text-xs text-[var(--ink)]/50">ยังไม่ตั้งรหัสผ่าน — นักศึกษาใช้ "ลืมรหัสผ่าน" ที่หน้า login เพื่อตั้งรหัสผ่านครั้งแรกเอง</p>
+        </form>
+      </div>
+
+      <div class="surface rounded-2xl p-6">
+        <h3 class="font-display font-medium mb-4">นำเข้าหลายคนพร้อมกัน (CSV)</h3>
+        <p class="text-xs text-[var(--ink)]/50 mb-2">รูปแบบ 1 บรรทัด/คน: อีเมล,ชื่อ,นามสกุล,รหัสนักศึกษา</p>
+        <textarea id="import-textarea" rows="6" placeholder="6501111@student.ac.th,สมชาย,ใจดี,6501111
+6501112@student.ac.th,สมหญิง,รักเรียน,6501112"
+          class="w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)] font-mono"></textarea>
+        <div id="import-message" class="hidden mt-3 text-sm rounded-lg px-3 py-2.5"></div>
+        <button id="import-btn" class="btn btn-primary mt-3">นำเข้าทั้งหมด</button>
+      </div>
+    </div>
+
+    <div class="surface rounded-2xl p-5">
+      <div class="flex flex-wrap gap-3 mb-4">
+        <input id="student-search-input" type="text" placeholder="ค้นหาชื่อ/อีเมล/รหัสนักศึกษา..."
+          class="flex-1 min-w-[200px] rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" id="student-suspended-only"> แสดงเฉพาะที่ถูกพักสิทธิ์
+        </label>
+      </div>
+      <div id="student-list" class="space-y-2"></div>
+    </div>
+  </section>
+
+  <!-- ===== Tab: ตั้งค่าระบบ ===== -->
+  <section id="tab-settings" class="hidden max-w-md">
+    <div class="surface rounded-2xl p-6 mb-6">
+      <h3 class="font-display font-medium mb-2">เกณฑ์บทลงโทษ</h3>
+      <p class="text-sm text-[var(--ink)]/60 mb-5">ปรับได้ทันทีโดยไม่ต้องแก้โค้ด มีผลกับการจอง/การรับคืนครั้งถัดไปทันที</p>
+      <div id="penalty-message" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5"></div>
+      <form id="penalty-form" class="space-y-4">
+        <label class="block">
+          <span class="text-sm font-medium">เวลาหมดอายุการจอง (ชั่วโมง) — ต้องมารับก่อนเวลานี้</span>
+          <input name="booking_expire_hours" type="number" min="1" max="168" required
+            class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium">เกินกำหนดตั้งแต่ (วัน) ถึงจะได้รับบทลงโทษ</span>
+          <input name="overdue_days_threshold" type="number" min="1" max="60" required
+            class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium">จำนวนวันที่พักสิทธิ์</span>
+          <input name="suspension_days" type="number" min="1" max="365" required
+            class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+        </label>
+        <button type="submit" class="btn btn-primary btn-block">บันทึกการตั้งค่า</button>
+      </form>
+    </div>
+
+    <div class="surface rounded-2xl p-6">
+      <h3 class="font-display font-medium mb-4">หมวดหมู่อุปกรณ์</h3>
+      <div id="category-list" class="space-y-2 mb-4"></div>
+      <div id="category-message" class="hidden mb-3 text-sm rounded-lg px-3 py-2.5"></div>
+      <div class="flex gap-2">
+        <input id="new-category-input" placeholder="ชื่อหมวดหมู่ใหม่"
+          class="flex-1 rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+        <button id="add-category-btn" class="btn btn-primary">เพิ่ม</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Tab: ประวัติอีเมล ===== -->
+  <section id="tab-notifications" class="hidden">
+    <div id="notification-list" class="space-y-2"></div>
+    <p id="notification-empty" class="hidden text-center text-sm text-[var(--ink)]/50 py-12">ยังไม่มีประวัติการแจ้งเตือน</p>
+  </section>
+</main>
+
+<!-- ===== Modal: ยืนยันรับ/คืนของ ===== -->
+<div id="confirm-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-5">
+  <div class="surface rounded-2xl p-6 w-full max-w-sm">
+    <h3 class="font-display font-semibold text-lg mb-4" id="confirm-modal-title"></h3>
+    <div id="confirm-modal-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
+    <form id="confirm-modal-form">
+      <label class="block mb-4">
+        <span class="text-sm font-medium">บันทึกสภาพอุปกรณ์ (ถ้ามี)</span>
+        <textarea name="condition_note" rows="2" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]" placeholder="เช่น สภาพดี ไม่มีรอยขีดข่วน"></textarea>
+      </label>
+      <label id="damaged-checkbox-wrap" class="hidden flex items-center gap-2 mb-5 text-sm">
+        <input type="checkbox" name="is_damaged"> อุปกรณ์ชำรุด (ปิดใช้งานชิ้นนี้ทันที)
+      </label>
+      <div class="flex gap-3">
+        <button type="button" id="confirm-modal-cancel" class="btn btn-outline-navy flex-1">ยกเลิก</button>
+        <button type="submit" id="confirm-modal-submit" class="btn btn-primary flex-1">ยืนยัน</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Modal: เพิ่ม/แก้ไขรุ่นอุปกรณ์ ===== -->
+<div id="equipment-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-5">
+  <div class="surface rounded-2xl p-6 w-full max-w-sm">
+    <h3 class="font-display font-semibold text-lg mb-4">เพิ่มรุ่นอุปกรณ์ใหม่</h3>
+    <div id="equipment-modal-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
+    <form id="equipment-form">
+      <label class="block mb-4">
+        <span class="text-sm font-medium">หมวดหมู่</span>
+        <select name="category" required id="equipment-category-select" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]"></select>
+      </label>
+      <label class="block mb-4">
+        <span class="text-sm font-medium">ชื่ออุปกรณ์</span>
+        <input type="text" name="name" required class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]" placeholder="เช่น โน้ตบุ๊ก Dell Latitude 5420">
+      </label>
+      <label class="block mb-4">
+        <span class="text-sm font-medium">ยืมได้สูงสุด (วัน)</span>
+        <input type="number" name="max_borrow_days" required min="1" value="7" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      </label>
+      <div class="flex gap-3">
+        <button type="button" id="equipment-modal-cancel" class="btn btn-outline-navy flex-1">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary flex-1">บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/auth-guard.js"></script>
+<script src="../assets/js/staff-dashboard.js"></script>
+</body>
+</html>
