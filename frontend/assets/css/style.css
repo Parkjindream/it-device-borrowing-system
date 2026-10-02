@@ -1,0 +1,179 @@
+/* ==========================================================================
+   ระบบยืม-คืนอุปกรณ์ไอที — สไตล์หลักของทั้งระบบ
+   ใช้คู่กับ Tailwind (CDN) ในแต่ละหน้า — ไฟล์นี้กำหนดโทนสี ฟอนต์ และ
+   คอมโพเนนต์ที่ Tailwind utility เพียว ๆ ทำได้ไม่สวยพอ (ปุ่ม, การ์ดพิเศษ, timeline)
+   ========================================================================== */
+
+:root {
+  --navy: #1e2a4a;
+  --navy-dark: #141d33;
+  --amber: #e8a33d;
+  --amber-dark: #cf8a25;
+  --teal: #2f8f82;
+  --paper: #f5f6f8;
+  --ink: #14171f;
+  --line: #e1e4ea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Sarabun", sans-serif;
+  background-color: var(--paper);
+  color: var(--ink);
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: "Kanit", sans-serif;
+}
+
+/* --- ปุ่มหลัก --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  border-radius: 0.6rem;
+  font-family: "Kanit", sans-serif;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+  background-color: var(--amber);
+  color: var(--navy-dark);
+}
+.btn-primary:hover { background-color: var(--amber-dark); }
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--paper);
+  border: 1.5px solid rgba(245, 246, 248, 0.35);
+}
+.btn-ghost:hover { border-color: rgba(245, 246, 248, 0.7); }
+
+.btn-outline-navy {
+  background-color: transparent;
+  color: var(--navy);
+  border: 1.5px solid var(--navy);
+}
+.btn-outline-navy:hover { background-color: var(--navy); color: white; }
+
+.btn-block { width: 100%; }
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* --- แถบหมวดหมู่อุปกรณ์ (เลื่อนแนวนอน) --- */
+.category-rail {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.75rem;
+  scroll-snap-type: x proximity;
+}
+.category-rail::-webkit-scrollbar { height: 6px; }
+.category-rail::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+.category-card {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+  width: 168px;
+}
+
+/* --- Timeline ขั้นตอนการใช้งาน --- */
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  position: relative;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  top: 22px;
+  left: 5%;
+  right: 5%;
+  height: 2px;
+  background: var(--line);
+  z-index: 0;
+}
+.timeline-step { position: relative; z-index: 1; }
+.timeline-num {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--navy);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Kanit", sans-serif;
+  font-weight: 600;
+  margin-bottom: 0.9rem;
+}
+@media (max-width: 768px) {
+  .timeline { grid-template-columns: 1fr; gap: 2rem; }
+  .timeline::before { display: none; }
+}
+
+/* --- สถานะ badge --- */
+.badge { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; font-weight: 600; padding: 0.25rem 0.7rem; border-radius: 999px; }
+.badge-available { background: rgba(47,143,130,0.12); color: var(--teal); }
+.badge-awaiting { background: rgba(232,163,61,0.15); color: var(--amber-dark); }
+.badge-borrowed { background: rgba(30,42,74,0.1); color: var(--navy); }
+.badge-overdue { background: rgba(200,60,60,0.12); color: #c33c3c; }
+.badge-returned { background: rgba(120,120,120,0.12); color: #6b6b6b; }
+.badge-cancelled { background: rgba(120,120,120,0.1); color: #8a8a8a; }
+
+/* --- การ์ดมาตรฐานทั้งระบบ --- */
+.surface {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+}
+
+/* --- FAQ accordion --- */
+.faq-item summary {
+  cursor: pointer;
+  list-style: none;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item .faq-icon { transition: transform 0.2s ease; }
+.faq-item[open] .faq-icon { transform: rotate(45deg); }
+
+/* --- โลโก้: ปรับขนาดที่นี่จุดเดียว ถ้าเปลี่ยนไฟล์โลโก้แล้วสัดส่วนไม่พอดี --- */
+.brand-logo {
+  height: 40px;
+  width: 40px;
+  object-fit: contain;
+}
+
+/* --- แถบสถานะเชื่อมต่อ API (ใช้ตอน dev เช็คว่าต่อ backend ติดหรือไม่) --- */
+#api-status-banner {
+  display: none;
+  background: #c33c3c;
+  color: white;
+  text-align: center;
+  font-size: 0.85rem;
+  padding: 0.5rem;
+}
+
+/* --- โฟกัสคีย์บอร์ดให้เห็นชัด (accessibility) --- */
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
