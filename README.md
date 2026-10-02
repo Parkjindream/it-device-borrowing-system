@@ -99,6 +99,7 @@ python manage.py seed_demo_data --reset    # ลบอุปกรณ์/กา�
 สร้างให้อัตโนมัติ:
 - 3 หมวดหมู่: โน้ตบุ๊ก, แท็บเล็ต (iPad), บอร์ดไมโครคอนโทรลเลอร์
 - 9 รุ่นอุปกรณ์: โน้ตบุ๊ก 3 รุ่น, iPad Gen 9/10, ESP32, ESP8266, Raspberry Pi 4, Arduino Uno
+บัญชีเทส:
 - บัญชีเจ้าหน้าที่ 1 คน: `staff01@example.ac.th`
 - บัญชีนักศึกษา 3 คน: `student01@example.ac.th`, `student02@...`, `student03@...`
 - **รหัสผ่านทุกบัญชี:** `------`
