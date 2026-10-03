@@ -40,7 +40,7 @@ urlpatterns = [
     path("staff/bookings/lookup/", views.StaffBookingLookupView.as_view(), name="staff-booking-lookup"),
     path("staff/bookings/<int:pk>/confirm-pickup/", views.StaffConfirmPickupView.as_view(), name="staff-confirm-pickup"),
     path("staff/bookings/<int:pk>/confirm-return/", views.StaffConfirmReturnView.as_view(), name="staff-confirm-return"),
-        path("staff/bookings/clear-history/", views.StaffBookingHistoryClearView.as_view(), name="staff-booking-clear-history"),
+    path("staff/bookings/clear-history/", views.StaffBookingHistoryClearView.as_view(), name="staff-booking-clear-history"),
 
     # --- โมดูล E/F/G: แจ้งเตือน, บทลงโทษ, นักศึกษา, ภาพรวม (เจ้าหน้าที่) ---
     path("staff/penalty-settings/", views.StaffPenaltySettingsView.as_view(), name="staff-penalty-settings"),
