@@ -40,12 +40,15 @@ urlpatterns = [
     path("staff/bookings/lookup/", views.StaffBookingLookupView.as_view(), name="staff-booking-lookup"),
     path("staff/bookings/<int:pk>/confirm-pickup/", views.StaffConfirmPickupView.as_view(), name="staff-confirm-pickup"),
     path("staff/bookings/<int:pk>/confirm-return/", views.StaffConfirmReturnView.as_view(), name="staff-confirm-return"),
+        path("staff/bookings/clear-history/", views.StaffBookingHistoryClearView.as_view(), name="staff-booking-clear-history"),
 
     # --- โมดูล E/F/G: แจ้งเตือน, บทลงโทษ, นักศึกษา, ภาพรวม (เจ้าหน้าที่) ---
     path("staff/penalty-settings/", views.StaffPenaltySettingsView.as_view(), name="staff-penalty-settings"),
     path("staff/students/", views.StaffStudentListCreateView.as_view(), name="staff-student-list"),
     path("staff/students/import/", views.StaffStudentImportView.as_view(), name="staff-student-import"),
+    path("staff/students/<int:pk>/", views.StaffStudentDetailView.as_view(), name="staff-student-detail"),
     path("staff/students/<int:pk>/unsuspend/", views.StaffUnsuspendStudentView.as_view(), name="staff-unsuspend-student"),
     path("staff/notifications/", views.StaffNotificationListView.as_view(), name="staff-notification-list"),
+    path("staff/notifications/clear/", views.StaffNotificationClearView.as_view(), name="staff-notification-clear"),
     path("staff/dashboard-summary/", views.StaffDashboardSummaryView.as_view(), name="staff-dashboard-summary"),
 ]
