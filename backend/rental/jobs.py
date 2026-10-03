@@ -11,10 +11,11 @@ real-time") ต่างจากจำนวนอุปกรณ์คงเ�
 """
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Booking, EquipmentUnit, User
+from .models import Booking, EquipmentUnit, NotificationLog, User
 from .notifications import (
     notify_auto_cancelled,
     notify_reminder_due_soon,
