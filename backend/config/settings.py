@@ -164,6 +164,11 @@ DEFAULT_MAX_BORROW_DAYS = 7
 DEFAULT_OVERDUE_DAYS_THRESHOLD = 1
 DEFAULT_SUSPENSION_DAYS = 2
 DEFAULT_MAX_ADVANCE_DAYS = 7   # จองล่วงหน้าได้ไม่เกินกี่วัน
+# --- เคลียร์ข้อมูลเก่าอัตโนมัติ (กันฐานข้อมูลโตไม่จำกัด) ---
+# ประวัติอีเมล (NotificationLog) เก็บไว้ไม่กี่วันก็พอ เพราะดูได้จาก booking โดยตรงอยู่แล้ว
+NOTIFICATION_LOG_RETENTION_DAYS = config("NOTIFICATION_LOG_RETENTION_DAYS", default=7, cast=int)
+# ประวัติการยืมที่ "จบแล้ว" (คืนแล้ว/ยกเลิก) เก็บไว้นานกว่า เพราะเป็นหลักฐานการยืม-คืนจริง
+BOOKING_HISTORY_RETENTION_DAYS = config("BOOKING_HISTORY_RETENTION_DAYS", default=180, cast=int)
 
 # --- Logging: ออกทาง console (Docker เก็บ log ให้ดูผ่าน docker compose logs) ---
 LOGGING = {
