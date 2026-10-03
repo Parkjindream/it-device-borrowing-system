@@ -86,6 +86,7 @@ def run_daily_due_date_checks():
     2. เตือนในวันที่ครบกำหนดคืนพอดี
     3. เปลี่ยนสถานะรายการที่เลยกำหนดคืนแล้วเป็น "เกินกำหนด"
     4. เตือนซ้ำรายวันสำหรับรายการที่ "เกินกำหนด" อยู่แล้ว
+    5. เคลียร์ประวัติอีเมล/ประวัติการยืมที่จบแล้วและเก่าเกินกำหนดเก็บ (กันฐานข้อมูลโตไม่จำกัด)
 
     ใช้ Booking.last_reminder_sent_date กันส่งอีเมลซ้ำมากกว่า 1 ครั้งต่อวัน
     ต่อ 1 รายการจอง แม้ job จะถูกรันซ้ำในวันเดียวกันด้วยเหตุผลใดก็ตาม
@@ -128,3 +129,37 @@ def run_daily_due_date_checks():
         notify_reminder_overdue(booking)
         booking.last_reminder_sent_date = today
         booking.save(update_fields=["last_reminder_sent_date"])
+
+    # --- 5) เคลียร์ข้อมูลเก่าอัตโนมัติ กันฐานข้อมูลโตไม่จำกัด ---
+    cleanup_old_notification_logs()
+    cleanup_old_booking_history()
+
+
+def cleanup_old_notification_logs(retention_days=None):
+    """
+    ลบ NotificationLog ที่เก่ากว่า retention_days วัน (ค่าเริ่มต้นจาก
+    settings.NOTIFICATION_LOG_RETENTION_DAYS) — ประวัติอีเมลไม่ใช่ข้อมูลสำคัญระยะยาว
+    แค่ไว้เช็คว่าส่งสำเร็จหรือไม่ จึงเก็บสั้น ๆ พอ คืนค่าจำนวนแถวที่ลบไป
+    """
+    days = retention_days if retention_days is not None else settings.NOTIFICATION_LOG_RETENTION_DAYS
+    cutoff = timezone.now() - timedelta(days=days)
+    deleted_count, _ = NotificationLog.objects.filter(sent_at__lt=cutoff).delete()
+    return deleted_count
+
+
+def cleanup_old_booking_history(retention_days=None):
+    """
+    ลบ Booking ที่ "จบแล้ว" (คืนแล้ว/ยกเลิก) และเก่ากว่า retention_days วัน
+    (ค่าเริ่มต้นจาก settings.BOOKING_HISTORY_RETENTION_DAYS)
+
+    ไม่แตะรายการที่ยังไม่จบ (รอรับของ/กำลังยืม/เกินกำหนด) ไม่ว่าจะเก่าแค่ไหนก็ตาม
+    เพื่อความปลอดภัย — เผื่อกรณีข้อมูลผิดปกติที่ยังไม่ถูกจัดการ จะไม่มีวันถูกลบทิ้งไปเฉย ๆ
+    คืนค่าจำนวนแถวที่ลบไป
+    """
+    days = retention_days if retention_days is not None else settings.BOOKING_HISTORY_RETENTION_DAYS
+    cutoff = timezone.now() - timedelta(days=days)
+    deleted_count, _ = Booking.objects.filter(
+        status__in=[Booking.Status.RETURNED, Booking.Status.CANCELLED],
+        updated_at__lt=cutoff,
+    ).delete()
+    return deleted_count
