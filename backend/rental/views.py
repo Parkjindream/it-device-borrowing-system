@@ -3,7 +3,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
-from django.db.models import Count, Q
+from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
@@ -24,6 +24,7 @@ from .permissions import IsStaffUser, IsStudentUser
 from .services import (
     BookingError, create_booking, cancel_booking, confirm_pickup, confirm_return, unsuspend_student,
 )
+from .jobs import cleanup_old_booking_history, cleanup_old_notification_logs
 from .serializers import (
     UserSerializer,
     ProfileUpdateSerializer,
@@ -56,6 +57,23 @@ def equipment_with_counts(qs):
     return qs.annotate(
         _total_units=Count("units", filter=~Q(units__status=EquipmentUnit.Status.DISABLED)),
         _available_units=Count("units", filter=Q(units__status=EquipmentUnit.Status.AVAILABLE)),
+    )
+
+
+def protected_delete_error(what_thai: str) -> Response:
+    """
+    ข้อความมาตรฐานตอนลบไม่ได้เพราะมีประวัติการยืมอ้างอิงอยู่ (on_delete=PROTECT)
+    แนะนำทางออก 2 ทาง: ปิดใช้งานแทน หรือเคลียร์ประวัติเก่าก่อนแล้วค่อยลบ
+    """
+    return Response(
+        {
+            "detail": (
+                f"ลบ{what_thai}นี้ไม่ได้ เพราะยังมีประวัติการยืมที่เกี่ยวข้องอยู่ในระบบ "
+                f"(เพื่อรักษาหลักฐานการยืม-คืน) ใช้ปุ่ม \"ปิดใช้งาน\" แทนได้ หรือเคลียร์ประวัติการยืม"
+                f"เก่าที่จบแล้ว (คืนแล้ว/ยกเลิก) ในแท็บ \"ตั้งค่าระบบ\" ก่อน แล้วค่อยลองลบอีกครั้ง"
+            )
+        },
+        status=status.HTTP_400_BAD_REQUEST,
     )
 
 
@@ -275,11 +293,25 @@ class StaffCategoryListCreateView(generics.ListCreateAPIView):
 
 
 class StaffCategoryDetailView(generics.RetrieveUpdateAPIView):
-    """PATCH /api/staff/equipment-categories/<id>/ — เปลี่ยนชื่อหมวดหมู่"""
+    """
+    PATCH  /api/staff/equipment-categories/<id>/ — เปลี่ยนชื่อหมวดหมู่
+    DELETE /api/staff/equipment-categories/<id>/ — ลบหมวดหมู่ (ลบไม่ได้ถ้ายังมีอุปกรณ์รุ่นไหนใช้อยู่)
+    """
 
     queryset = EquipmentCategory.objects.all()
     serializer_class = EquipmentCategorySerializer
     permission_classes = [IsStaffUser]
+
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+        equipment_count = instance.equipment_list.count()
+        if equipment_count > 0:
+            return Response(
+                {"detail": f"ลบหมวดหมู่นี้ไม่ได้ เพราะยังมีอุปกรณ์ {equipment_count} รุ่นอยู่ในหมวดนี้ ย้ายหรือลบอุปกรณ์เหล่านั้นก่อน"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class StaffEquipmentListCreateView(generics.ListCreateAPIView):
@@ -307,8 +339,9 @@ class StaffEquipmentListCreateView(generics.ListCreateAPIView):
 
 class StaffEquipmentDetailView(generics.RetrieveUpdateAPIView):
     """
-    GET   /api/staff/equipment/<id>/
-    PATCH /api/staff/equipment/<id>/   — แก้ไขข้อมูล/เปลี่ยนรูป/ปิดใช้งาน (is_active=false)
+    GET    /api/staff/equipment/<id>/
+    PATCH  /api/staff/equipment/<id>/   — แก้ไขข้อมูล/เปลี่ยนรูป/ปิดใช้งาน (is_active=false)
+    DELETE /api/staff/equipment/<id>/   — ลบรุ่นอุปกรณ์นี้ทิ้งถาวร (ลบไม่ได้ถ้ามีประวัติการยืมค้างอยู่)
     """
 
     permission_classes = [IsStaffUser]
@@ -327,6 +360,14 @@ class StaffEquipmentDetailView(generics.RetrieveUpdateAPIView):
         serializer.save()
         fresh = self.get_queryset().get(pk=instance.pk)
         return Response(EquipmentListSerializer(fresh, context=self.get_serializer_context()).data)
+
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+        try:
+            instance.delete()
+        except ProtectedError:
+            return protected_delete_error("อุปกรณ์รุ่น")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class StaffEquipmentUnitListCreateView(generics.ListCreateAPIView):
@@ -372,6 +413,20 @@ class StaffEquipmentUnitDetailView(generics.RetrieveUpdateAPIView):
                 {"status": "อุปกรณ์ชิ้นนี้กำลังถูกจอง/ยืมอยู่ แก้สถานะไม่ได้ (ต้องรับคืนหรือยกเลิกการจองก่อน)"}
             )
         serializer.save()
+
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+        managed = (EquipmentUnit.Status.RESERVED, EquipmentUnit.Status.BORROWED)
+        if instance.status in managed:
+            return Response(
+                {"detail": "อุปกรณ์ชิ้นนี้กำลังถูกจอง/ยืมอยู่ ลบไม่ได้ (ต้องรับคืนหรือยกเลิกการจองก่อน)"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            instance.delete()
+        except ProtectedError:
+            return protected_delete_error("อุปกรณ์ชิ้น")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # ---------------------------------------------------------------------------
@@ -570,6 +625,34 @@ class StaffStudentListCreateView(APIView):
         return Response(StaffStudentSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
+class StaffStudentDetailView(APIView):
+    """
+    PATCH /api/staff/students/<id>/
+    แก้ไขข้อมูลนักศึกษาที่มีอยู่แล้ว — ใช้เติมรหัสนักศึกษาที่ขาดหาย หรือแก้ชื่อ-นามสกุลให้ถูกต้อง
+    (เช่นบัญชีที่เคยถูกสร้างแบบไม่ครบข้อมูลมาก่อน)
+    """
+
+    permission_classes = [IsStaffUser]
+
+    def patch(self, request, pk):
+        student = get_object_or_404(User, pk=pk, role=User.Role.STUDENT)
+        allowed_fields = {"first_name", "last_name", "student_id"}
+        data = {k: v for k, v in request.data.items() if k in allowed_fields}
+
+        student_id = data.get("student_id", "").strip() if "student_id" in data else None
+        if student_id:
+            if User.objects.filter(student_id=student_id).exclude(pk=student.pk).exists():
+                return Response({"detail": "รหัสนักศึกษานี้ถูกใช้งานโดยคนอื่นแล้ว"}, status=status.HTTP_400_BAD_REQUEST)
+            data["student_id"] = student_id
+        elif "student_id" in data and not student_id:
+            data["student_id"] = None
+
+        for field, value in data.items():
+            setattr(student, field, value.strip() if isinstance(value, str) else value)
+        student.save(update_fields=list(data.keys()) if data else ["id"])
+        return Response(StaffStudentSerializer(student).data)
+
+
 class StaffStudentImportView(APIView):
     """
     POST /api/staff/students/import/  {"students": [{email, first_name, last_name, student_id}, ...]}
@@ -634,6 +717,45 @@ class StaffNotificationListView(generics.ListAPIView):
 
     def get_queryset(self):
         return NotificationLog.objects.select_related("booking").order_by("-sent_at")[:100]
+
+
+class StaffNotificationClearView(APIView):
+    """
+    POST /api/staff/notifications/clear/
+    ล้างประวัติอีเมลด้วยมือทันที (เผื่อไม่อยากรอรอบเคลียร์อัตโนมัติรายวัน)
+    ค่าเริ่มต้นลบเฉพาะรายการที่เก่ากว่าเกณฑ์ปกติ (settings.NOTIFICATION_LOG_RETENTION_DAYS)
+    ส่ง {"clear_all": true} มาด้วยถ้าต้องการล้างทั้งหมดทันทีไม่สนวันที่
+    """
+
+    permission_classes = [IsStaffUser]
+
+    def post(self, request):
+        if request.data.get("clear_all"):
+            deleted_count, _ = NotificationLog.objects.all().delete()
+        else:
+            deleted_count = cleanup_old_notification_logs()
+        return Response({"deleted_count": deleted_count})
+
+
+class StaffBookingHistoryClearView(APIView):
+    """
+    POST /api/staff/bookings/clear-history/
+    ล้างประวัติการยืมที่ "จบแล้ว" (คืนแล้ว/ยกเลิก) ด้วยมือทันที — ไม่แตะรายการที่ยังไม่จบ
+    (รอรับของ/กำลังยืม/เกินกำหนด) ไม่ว่ากรณีใดก็ตาม เพื่อความปลอดภัย
+    ค่าเริ่มต้นลบเฉพาะรายการที่เก่ากว่าเกณฑ์ปกติ (settings.BOOKING_HISTORY_RETENTION_DAYS)
+    ส่ง {"clear_all": true} มาด้วยถ้าต้องการล้างทุกรายการที่จบแล้วทันทีไม่สนวันที่
+    """
+
+    permission_classes = [IsStaffUser]
+
+    def post(self, request):
+        if request.data.get("clear_all"):
+            deleted_count, _ = Booking.objects.filter(
+                status__in=[Booking.Status.RETURNED, Booking.Status.CANCELLED],
+            ).delete()
+        else:
+            deleted_count = cleanup_old_booking_history()
+        return Response({"deleted_count": deleted_count})
 
 
 # ---------------------------------------------------------------------------
