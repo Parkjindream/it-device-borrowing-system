@@ -83,6 +83,27 @@ const Api = {
   patch(path, body) {
     return this.request(path, { method: "PATCH", body });
   },
+
+  /** ใช้ตอนต้องอัปโหลดไฟล์ (เช่นรูปอุปกรณ์) — ส่งเป็น multipart/form-data */
+  async postFormData(path, formData, { method = "POST" } = {}) {
+    const headers = {};
+    if (this.getToken()) headers["Authorization"] = `Token ${this.getToken()}`;
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: formData });
+    } catch (networkError) {
+      return { ok: false, status: 0, data: { detail: "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้" } };
+    }
+    let data = null;
+    if (response.status !== 204) {
+      try { data = await response.json(); } catch (_e) { data = null; }
+    }
+    return { ok: response.ok, status: response.status, data };
+  },
+
+  delete(path) {
+    return this.request(path, { method: "DELETE" });
+  },
 };
 
 /**
@@ -164,7 +185,6 @@ function formatDateTime(isoString) {
   const d = new Date(isoString);
   return d.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
 }
-
 
 /** หน่วงการเรียกฟังก์ชันจนกว่าจะหยุดพิมพ์ครบ `delay` มิลลิวินาที — ใช้กับช่องค้นหา */
 function debounce(fn, delay) {
