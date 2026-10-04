@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupStudentManagement();
   setupPenaltySettings();
   setupCategoryManagement();
+  setupClearData();
 
   document.getElementById("status-filter").addEventListener("change", loadQueue);
   await loadSummary();
@@ -208,13 +209,17 @@ async function loadInventory() {
     const row = document.createElement("div");
     row.className = "surface rounded-xl p-4 flex flex-wrap items-center justify-between gap-3";
     row.innerHTML = `
-      <div>
-        <p class="font-display font-medium text-sm">${eq.name} ${eq.is_active ? "" : '<span class="text-xs text-[#c33c3c]">(ปิดใช้งาน)</span>'}</p>
-        <p class="text-xs text-[var(--ink)]/55 mt-0.5">${eq.category?.name ?? ""} · เหลือ ${eq.available_units}/${eq.total_units} เครื่อง</p>
+      <div class="flex items-center gap-3 min-w-0">
+        <img src="${equipmentImageSrc(eq)}" alt="${eq.name}" class="w-12 h-12 rounded-lg object-contain bg-[var(--paper)] p-1 shrink-0">
+        <div class="min-w-0">
+          <p class="font-display font-medium text-sm truncate">${eq.name} ${eq.is_active ? "" : '<span class="text-xs text-[#c33c3c]">(ปิดใช้งาน)</span>'}</p>
+          <p class="text-xs text-[var(--ink)]/55 mt-0.5">${eq.category?.name ?? ""} · เหลือ ${eq.available_units}/${eq.total_units} เครื่อง</p>
+        </div>
       </div>
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-wrap">
         <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs add-unit-btn">+ เพิ่มเครื่อง</button>
         <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs toggle-active-btn">${eq.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button>
+        <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs delete-equipment-btn" style="color:#c33c3c;border-color:#c33c3c;">ลบ</button>
       </div>
     `;
 
@@ -234,8 +239,25 @@ async function loadInventory() {
       if (patchOk) loadInventory();
     });
 
+    row.querySelector(".delete-equipment-btn").addEventListener("click", async () => {
+      if (!confirm(`ลบ "${eq.name}" ทิ้งถาวร? (ลบไม่ได้ถ้ามีประวัติการยืมค้างอยู่ — ใช้ "ปิดใช้งาน" แทนได้)`)) return;
+      const { ok: delOk, data: delData } = await Api.delete(`/staff/equipment/${eq.id}/`);
+      if (!delOk) {
+        alert(extractErrorMessage(delData, "ลบไม่สำเร็จ"));
+        return;
+      }
+      await loadInventory();
+    });
+
     list.appendChild(row);
   });
+}
+
+/** คืนช่องอัปโหลดรูปอุปกรณ์กลับเป็นสถานะว่าง (ไอคอน + ข้อความ "คลิกเพื่อเลือกรูปภาพ") */
+function resetEquipmentImageDropzone() {
+  document.getElementById("equipment-image-preview").classList.add("hidden");
+  document.getElementById("equipment-image-placeholder-icon").classList.remove("hidden");
+  document.getElementById("equipment-image-placeholder-text").classList.remove("hidden");
 }
 
 function setupEquipmentModal() {
@@ -253,23 +275,49 @@ function setupEquipmentModal() {
       });
     }
     document.getElementById("equipment-form").reset();
+    resetEquipmentImageDropzone();
     document.getElementById("equipment-modal-error").classList.add("hidden");
     modal.classList.remove("hidden");
   });
 
   document.getElementById("equipment-modal-cancel").addEventListener("click", () => modal.classList.add("hidden"));
 
+  // พรีวิวรูปที่เลือกก่อนอัปโหลดจริง — สลับจากไอคอน+ข้อความ เป็นรูปที่เลือก
+  document.getElementById("equipment-image-input").addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    const preview = document.getElementById("equipment-image-preview");
+    const icon = document.getElementById("equipment-image-placeholder-icon");
+    const text = document.getElementById("equipment-image-placeholder-text");
+
+    if (!file) { resetEquipmentImageDropzone(); return; }
+
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove("hidden");
+    icon.classList.add("hidden");
+    text.classList.add("hidden");
+  });
+
   document.getElementById("equipment-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    const formData = new FormData(event.target);
+    const form = event.target;
     const errorBox = document.getElementById("equipment-modal-error");
+    const submitBtn = document.getElementById("equipment-modal-submit");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "กำลังบันทึก...";
 
-    const { ok, data } = await Api.post("/staff/equipment/", {
-      category: Number(formData.get("category")),
-      name: formData.get("name"),
-      max_borrow_days: Number(formData.get("max_borrow_days")),
-      is_active: true,
-    });
+    // ใช้ FormData เสมอ (ไม่ใช่ JSON) เพราะต้องรองรับไฟล์รูปภาพแบบ multipart
+    const formData = new FormData();
+    formData.set("category", form.category.value);
+    formData.set("name", form.name.value);
+    formData.set("max_borrow_days", form.max_borrow_days.value);
+    formData.set("is_active", "true");
+    const imageFile = document.getElementById("equipment-image-input").files[0];
+    if (imageFile) formData.set("image", imageFile);
+
+    const { ok, data } = await Api.postFormData("/staff/equipment/", formData);
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = "บันทึก";
 
     if (!ok) {
       errorBox.textContent = extractErrorMessage(data, "บันทึกไม่สำเร็จ");
@@ -366,7 +414,11 @@ async function loadStudentList() {
           ${s.is_currently_suspended ? `· <span class="text-[#c33c3c]">พักสิทธิ์ถึง ${s.suspended_until ? formatDate(s.suspended_until) : "-"}</span>` : ""}
         </p>
       </div>
-      ${s.is_currently_suspended ? `<button data-student-id="${s.id}" class="btn btn-outline-navy !py-1.5 !px-3 text-xs unsuspend-row-btn">ปลดล็อก</button>` : ""}
+      <div class="flex gap-2">
+        <button data-student-id="${s.id}" data-first-name="${s.first_name}" data-last-name="${s.last_name || ""}" data-student-code="${s.student_id || ""}"
+          class="btn btn-outline-navy !py-1.5 !px-3 text-xs edit-student-btn">แก้ไข</button>
+        ${s.is_currently_suspended ? `<button data-student-id="${s.id}" class="btn btn-outline-navy !py-1.5 !px-3 text-xs unsuspend-row-btn">ปลดล็อก</button>` : ""}
+      </div>
     </div>
   `).join("");
 
@@ -374,6 +426,24 @@ async function loadStudentList() {
     btn.addEventListener("click", async () => {
       const { ok: unsuspendOk, data: unsuspendData } = await Api.post(`/staff/students/${btn.dataset.studentId}/unsuspend/`, null);
       if (!unsuspendOk) { alert(extractErrorMessage(unsuspendData, "ปลดล็อกไม่สำเร็จ")); return; }
+      loadStudentList();
+    });
+  });
+
+  // แก้ไขชื่อ-นามสกุล-รหัสนักศึกษา — ใช้แก้ให้บัญชีที่เคยถูกเพิ่มมาแบบข้อมูลไม่ครบ (เช่นไม่มีรหัสนักศึกษา)
+  list.querySelectorAll(".edit-student-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const firstName = prompt("ชื่อ:", btn.dataset.firstName);
+      if (firstName === null) return;
+      const lastName = prompt("นามสกุล:", btn.dataset.lastName);
+      if (lastName === null) return;
+      const studentCode = prompt("รหัสนักศึกษา (เว้นว่างได้):", btn.dataset.studentCode);
+      if (studentCode === null) return;
+
+      const { ok, data } = await Api.patch(`/staff/students/${btn.dataset.studentId}/`, {
+        first_name: firstName, last_name: lastName, student_id: studentCode,
+      });
+      if (!ok) { alert(extractErrorMessage(data, "แก้ไขไม่สำเร็จ")); return; }
       loadStudentList();
     });
   });
@@ -428,11 +498,60 @@ async function loadCategoryList() {
   const { ok, data } = await Api.get("/staff/equipment-categories/");
   const list = document.getElementById("category-list");
   if (!ok || !data) return;
+
+  if (data.length === 0) {
+    list.innerHTML = '<p class="text-sm text-[var(--ink)]/50">ยังไม่มีหมวดหมู่</p>';
+    return;
+  }
+
   list.innerHTML = data.map((c) => `
     <div class="flex items-center justify-between rounded-lg border border-[var(--line)] px-3.5 py-2 text-sm">
       <span>${c.name}</span>
+      <button data-category-id="${c.id}" data-category-name="${c.name}" class="delete-category-btn text-xs" style="color:#c33c3c;">ลบ</button>
     </div>
-  `).join("") || '<p class="text-sm text-[var(--ink)]/50">ยังไม่มีหมวดหมู่</p>';
+  `).join("");
+
+  list.querySelectorAll(".delete-category-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(`ลบหมวดหมู่ "${btn.dataset.categoryName}" ทิ้ง? (ลบไม่ได้ถ้ายังมีอุปกรณ์รุ่นไหนอยู่ในหมวดนี้)`)) return;
+      const { ok: delOk, data: delData } = await Api.delete(`/staff/equipment-categories/${btn.dataset.categoryId}/`);
+      if (!delOk) { alert(extractErrorMessage(delData, "ลบไม่สำเร็จ")); return; }
+      loadCategoryList();
+    });
+  });
+}
+
+/* ========================= เคลียร์ข้อมูลเก่า ========================= */
+
+function setupClearData() {
+  async function clearNotifications(button) {
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = "กำลังล้าง...";
+    const { ok, data } = await Api.post("/staff/notifications/clear/", null);
+    button.disabled = false;
+    button.textContent = original;
+    if (!ok) { alert(extractErrorMessage(data, "ล้างไม่สำเร็จ")); return; }
+    alert(`ล้างประวัติอีเมลไปแล้ว ${data.deleted_count} รายการ`);
+    if (!document.getElementById("tab-notifications").classList.contains("hidden")) loadNotificationList();
+  }
+
+  async function clearBookingHistory(button) {
+    if (!confirm('ล้างประวัติการยืมที่ "จบแล้ว" (คืนแล้ว/ยกเลิก) และเก่ากว่าเกณฑ์ที่ตั้งไว้? รายการที่ยังไม่จบจะไม่ถูกแตะต้อง')) return;
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = "กำลังล้าง...";
+    const { ok, data } = await Api.post("/staff/bookings/clear-history/", null);
+    button.disabled = false;
+    button.textContent = original;
+    if (!ok) { alert(extractErrorMessage(data, "ล้างไม่สำเร็จ")); return; }
+    alert(`ล้างประวัติการยืมไปแล้ว ${data.deleted_count} รายการ`);
+    loadSummary();
+  }
+
+  document.getElementById("clear-notifications-btn").addEventListener("click", (e) => clearNotifications(e.target));
+  document.getElementById("clear-notifications-now-btn").addEventListener("click", (e) => clearNotifications(e.target));
+  document.getElementById("clear-booking-history-btn").addEventListener("click", (e) => clearBookingHistory(e.target));
 }
 
 /* ========================= ประวัติอีเมล (โมดูล E) ========================= */
