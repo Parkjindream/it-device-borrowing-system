@@ -1,5 +1,4 @@
 version: 2
-#authtoken: 3K5fc1BT83rDtNInpDCwoiopIsI_9Zra1C449KKsPnWLEtpz
 tunnels:
   backend:
     addr: 8000
@@ -7,4 +6,3 @@ tunnels:
   frontend:
     addr: 5500
     proto: http
-#ทดสอบใช้งานนจริงการจะ deploy ว่าใช้งานได้ไหมโดยให้เพื่อนๆในกลุ่มช่วยทดสอบ
