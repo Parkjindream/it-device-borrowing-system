@@ -80,7 +80,12 @@
   <section id="tab-students" class="hidden">
     <div class="grid md:grid-cols-2 gap-6 mb-6">
       <div class="surface rounded-2xl p-6">
-        <h3 class="font-display font-medium mb-4">เพิ่มนักศึกษา 1 คน</h3>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(30,42,74,0.08);">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 8h4M19 6v4"/></svg>
+          </div>
+          <h3 class="font-display font-medium">เพิ่มนักศึกษา 1 คน</h3>
+        </div>
         <div id="add-student-message" class="hidden mb-3 text-sm rounded-lg px-3 py-2.5"></div>
         <form id="add-student-form" class="space-y-3">
           <input name="email" type="email" required placeholder="อีเมล"
@@ -96,7 +101,12 @@
       </div>
 
       <div class="surface rounded-2xl p-6">
-        <h3 class="font-display font-medium mb-4">นำเข้าหลายคนพร้อมกัน (CSV)</h3>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(47,143,130,0.12);">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M12 3v12M12 15l-4-4M12 15l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+          </div>
+          <h3 class="font-display font-medium">นำเข้าหลายคนพร้อมกัน (CSV)</h3>
+        </div>
         <p class="text-xs text-[var(--ink)]/50 mb-2">รูปแบบ 1 บรรทัด/คน: อีเมล,ชื่อ,นามสกุล,รหัสนักศึกษา</p>
         <textarea id="import-textarea" rows="6" placeholder="6501111@student.ac.th,สมชาย,ใจดี,6501111
 6501112@student.ac.th,สมหญิง,รักเรียน,6501112"
@@ -121,7 +131,12 @@
   <!-- ===== Tab: ตั้งค่าระบบ ===== -->
   <section id="tab-settings" class="hidden max-w-md">
     <div class="surface rounded-2xl p-6 mb-6">
-      <h3 class="font-display font-medium mb-2">เกณฑ์บทลงโทษ</h3>
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(232,163,61,0.15);">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--amber-dark)" stroke-width="2"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/><path d="M9.5 12l1.8 1.8L15 10"/></svg>
+        </div>
+        <h3 class="font-display font-medium">เกณฑ์บทลงโทษ</h3>
+      </div>
       <p class="text-sm text-[var(--ink)]/60 mb-5">ปรับได้ทันทีโดยไม่ต้องแก้โค้ด มีผลกับการจอง/การรับคืนครั้งถัดไปทันที</p>
       <div id="penalty-message" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5"></div>
       <form id="penalty-form" class="space-y-4">
@@ -144,8 +159,13 @@
       </form>
     </div>
 
-    <div class="surface rounded-2xl p-6">
-      <h3 class="font-display font-medium mb-4">หมวดหมู่อุปกรณ์</h3>
+    <div class="surface rounded-2xl p-6 mb-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(47,143,130,0.12);">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        </div>
+        <h3 class="font-display font-medium">หมวดหมู่อุปกรณ์</h3>
+      </div>
       <div id="category-list" class="space-y-2 mb-4"></div>
       <div id="category-message" class="hidden mb-3 text-sm rounded-lg px-3 py-2.5"></div>
       <div class="flex gap-2">
@@ -154,10 +174,32 @@
         <button id="add-category-btn" class="btn btn-primary">เพิ่ม</button>
       </div>
     </div>
+
+    <div class="surface rounded-2xl p-6" style="border-color:rgba(232,163,61,0.35);">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(232,163,61,0.15);">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--amber-dark)" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13"/></svg>
+        </div>
+        <h3 class="font-display font-medium">เคลียร์ข้อมูลเก่า</h3>
+      </div>
+      <p class="text-sm text-[var(--ink)]/60 mb-4">
+        ระบบเคลียร์ให้อัตโนมัติอยู่แล้วทุกวัน (ประวัติอีเมลเก่ากว่า 7 วัน, ประวัติการยืมที่จบแล้ว
+        เก่ากว่า 180 วัน) ปุ่มนี้ไว้ใช้เคลียร์ทันทีถ้าไม่อยากรอรอบอัตโนมัติ — รายการที่ยัง
+        "รอรับของ/กำลังยืม/เกินกำหนด" จะไม่ถูกลบไม่ว่ากรณีใด
+      </p>
+      <div id="clear-data-message" class="hidden mb-3 text-sm rounded-lg px-3 py-2.5"></div>
+      <div class="flex flex-col gap-2">
+        <button id="clear-notifications-btn" class="btn btn-outline-navy btn-block">ล้างประวัติอีเมลที่เก่าแล้วตอนนี้</button>
+        <button id="clear-booking-history-btn" class="btn btn-outline-navy btn-block">ล้างประวัติการยืมที่จบแล้ว (เก่าแล้ว) ตอนนี้</button>
+      </div>
+    </div>
   </section>
 
   <!-- ===== Tab: ประวัติอีเมล ===== -->
   <section id="tab-notifications" class="hidden">
+    <div class="flex justify-end mb-4">
+      <button id="clear-notifications-now-btn" class="btn btn-outline-navy !py-1.5 !px-4 text-sm">ล้างประวัติเก่าตอนนี้</button>
+    </div>
     <div id="notification-list" class="space-y-2"></div>
     <p id="notification-empty" class="hidden text-center text-sm text-[var(--ink)]/50 py-12">ยังไม่มีประวัติการแจ้งเตือน</p>
   </section>
@@ -202,9 +244,20 @@
         <span class="text-sm font-medium">ยืมได้สูงสุด (วัน)</span>
         <input type="number" name="max_borrow_days" required min="1" value="7" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
       </label>
+      <label class="block mb-5">
+        <span class="text-sm font-medium">รูปภาพอุปกรณ์ (ไม่บังคับ)</span>
+        <label for="equipment-image-input" id="equipment-image-dropzone"
+          class="mt-1.5 flex flex-col items-center justify-center gap-1.5 w-full h-28 rounded-lg border-2 border-dashed border-[var(--line)] cursor-pointer hover:border-[var(--navy)] transition-colors bg-[var(--paper)] overflow-hidden">
+          <svg id="equipment-image-placeholder-icon" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" opacity="0.4"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>
+          <span id="equipment-image-placeholder-text" class="text-xs text-[var(--ink)]/45">คลิกเพื่อเลือกรูปภาพ</span>
+          <img id="equipment-image-preview" class="hidden w-full h-full object-contain p-1">
+        </label>
+        <input type="file" name="image" accept="image/*" id="equipment-image-input" class="hidden">
+        <p class="text-xs text-[var(--ink)]/50 mt-1.5">ถ้าไม่อัปโหลด ระบบจะใช้ภาพประกอบสำเร็จรูปแทนให้อัตโนมัติ</p>
+      </label>
       <div class="flex gap-3">
         <button type="button" id="equipment-modal-cancel" class="btn btn-outline-navy flex-1">ยกเลิก</button>
-        <button type="submit" class="btn btn-primary flex-1">บันทึก</button>
+        <button type="submit" id="equipment-modal-submit" class="btn btn-primary flex-1">บันทึก</button>
       </div>
     </form>
   </div>
