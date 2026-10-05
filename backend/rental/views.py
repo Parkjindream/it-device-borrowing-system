@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -113,17 +114,18 @@ class LogoutView(APIView):
 class MeView(APIView):
     """
     GET   /api/auth/me/ — ข้อมูลผู้ใช้ที่ล็อกอินอยู่
-    PATCH /api/auth/me/ — แก้ไขชื่อ-นามสกุลของตัวเอง (บันทึกถาวรในฐานข้อมูล)
+    PATCH /api/auth/me/ — แก้ไขชื่อ-นามสกุล/รหัสนักศึกษา/รูปโปรไฟล์ของตัวเอง (บันทึกถาวร)
+           รองรับทั้ง JSON ธรรมดา และ multipart/form-data (ตอนแนบรูป)
     """
 
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
+        return Response(UserSerializer(request.user, context={"request": request}).data)
 
     def patch(self, request):
         serializer = ProfileUpdateSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(UserSerializer(request.user).data)
+        return Response(UserSerializer(request.user, context={"request": request}).data)
 
 
 class ChangePasswordView(APIView):
@@ -475,6 +477,30 @@ class MyBookingCancelView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         booking = booking_queryset().get(pk=booking.pk)
         return Response(BookingSerializer(booking, context={"request": request}).data)
+
+
+class MyBookingHistoryClearView(APIView):
+    """
+    POST /api/bookings/clear-history/
+    นักศึกษาล้างประวัติการยืมของ "ตัวเอง" ที่จบแล้ว (คืนแล้ว/ยกเลิก) ด้วยมือทันที
+    ไม่แตะรายการที่ยังไม่จบ (รอรับของ/กำลังยืม/เกินกำหนด) ไม่ว่ากรณีใดก็ตาม
+    ค่าเริ่มต้นลบเฉพาะรายการที่เก่ากว่าเกณฑ์ปกติ (settings.BOOKING_HISTORY_RETENTION_DAYS)
+    ส่ง {"clear_all": true} มาด้วยถ้าต้องการล้างทุกรายการที่จบแล้วของตัวเองทันทีไม่สนวันที่
+    """
+
+    permission_classes = [IsStudentUser]
+
+    def post(self, request):
+        base_qs = Booking.objects.filter(
+            student=request.user,
+            status__in=[Booking.Status.RETURNED, Booking.Status.CANCELLED],
+        )
+        if request.data.get("clear_all"):
+            deleted_count, _ = base_qs.delete()
+        else:
+            cutoff = timezone.now() - timedelta(days=settings.BOOKING_HISTORY_RETENTION_DAYS)
+            deleted_count, _ = base_qs.filter(updated_at__lt=cutoff).delete()
+        return Response({"deleted_count": deleted_count})
 
 
 # ---------------------------------------------------------------------------
