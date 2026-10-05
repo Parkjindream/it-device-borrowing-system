@@ -34,6 +34,7 @@ urlpatterns = [
     # --- โมดูล C: การจอง (ฝั่งนักศึกษา) ---
     path("bookings/", views.MyBookingListCreateView.as_view(), name="my-booking-list"),
     path("bookings/<int:pk>/cancel/", views.MyBookingCancelView.as_view(), name="my-booking-cancel"),
+    path("bookings/clear-history/", views.MyBookingHistoryClearView.as_view(), name="my-booking-clear-history"),
 
     # --- โมดูล D: รับ-คืนอุปกรณ์ (ฝั่งเจ้าหน้าที่) ---
     path("staff/bookings/", views.StaffBookingListView.as_view(), name="staff-booking-list"),
