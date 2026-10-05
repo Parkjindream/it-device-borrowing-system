@@ -34,26 +34,52 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "email", "first_name", "last_name",
             "role", "student_id", "is_suspended", "is_currently_suspended",
-            "suspended_until", "suspended_reason",
+            "suspended_until", "suspended_reason", "profile_image",
         ]
         read_only_fields = fields
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
-    """ผู้ใช้แก้ไขโปรไฟล์ตัวเองได้เฉพาะชื่อ-นามสกุล (อีเมล/รหัสนักศึกษา/สิทธิ์ ต้องให้เจ้าหน้าที่แก้)"""
+    """
+    ผู้ใช้แก้ไขโปรไฟล์ตัวเองได้: ชื่อ-นามสกุล, รหัสนักศึกษา (ถ้ายังไม่มีหรือเพิ่มเติมภายหลัง),
+    และรูปโปรไฟล์ (อัปโหลดแบบ multipart) — อีเมล/สิทธิ์ ต้องให้เจ้าหน้าที่แก้เท่านั้น
+    """
 
     first_name = serializers.CharField(max_length=150, allow_blank=False)
     last_name = serializers.CharField(max_length=150, allow_blank=True, required=False)
+    student_id = serializers.CharField(max_length=20, allow_blank=True, required=False)
 
     class Meta:
         model = User
-        fields = ["first_name", "last_name"]
+        fields = ["first_name", "last_name", "student_id", "profile_image"]
 
     def validate_first_name(self, value):
         return value.strip()
 
     def validate_last_name(self, value):
         return value.strip()
+
+    def validate_student_id(self, value):
+        value = value.strip()
+        if not value:
+            return value
+        qs = User.objects.filter(student_id=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("รหัสนักศึกษานี้ถูกใช้งานโดยคนอื่นแล้ว")
+        return value
+
+    def validate_profile_image(self, image):
+        if image and image.size > MAX_IMAGE_BYTES:
+            raise serializers.ValidationError("รูปภาพต้องมีขนาดไม่เกิน 5 MB")
+        return image
+
+    def update(self, instance, validated_data):
+        # ช่องว่างใน student_id แปลว่า "ไม่เปลี่ยน" ไม่ใช่ "ลบ" (กันเผลอเคลียร์รหัสที่มีอยู่แล้วโดยไม่ตั้งใจ)
+        if "student_id" in validated_data and not validated_data["student_id"]:
+            validated_data.pop("student_id")
+        return super().update(instance, validated_data)
 
 
 class ChangePasswordSerializer(serializers.Serializer):
