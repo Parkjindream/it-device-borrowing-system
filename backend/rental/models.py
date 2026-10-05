@@ -59,6 +59,10 @@ class User(AbstractUser):
     suspended_reason = models.CharField(
         "เหตุผลที่พักสิทธิ์", max_length=255, blank=True
     )
+    # รูปโปรไฟล์ที่ผู้ใช้อัปโหลดเอง (นักศึกษาแก้ไขได้ที่หน้าโปรไฟล์ของตัวเอง)
+    profile_image = models.ImageField(
+        "รูปโปรไฟล์", upload_to="avatars/", blank=True, null=True
+    )
 
     objects = UserManager()
 
