@@ -9,23 +9,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="assets/css/style.css">
+<style>
+  body { font-family: 'Sarabun', sans-serif; }
+  h1, h2, h3, h4, h5, h6, .font-display { font-family: 'Kanit', sans-serif; }
+</style>
 </head>
-<body class="antialiased">
+<body class="bg-slate-50 text-slate-700 font-sans antialiased selection:bg-blue-600 selection:text-white">
 
-<!-- ===== Navbar ===== -->
-<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-[var(--line)]">
-  <div class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
-    <a href="index.html" class="flex items-center gap-2.5">
-      <img src="assets/img/logo.png" alt="โลโก้ศูนย์ยืม-คืนอุปกรณ์ไอที" class="brand-logo">
-      <span class="font-display font-semibold text-[var(--navy)] text-lg leading-tight">ศูนย์ยืม-คืน<br class="hidden sm:block">อุปกรณ์ไอที</span>
+<!--Navbar-->
+<header class="sticky top-0 z-50 bg-white/85 backdrop-blur-md border-b border-blue-100/80 shadow-sm">
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-3 group">
+      <div class="p-2 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition">
+        <img src="img/KMITL.png" alt="โลโก้ศูนย์ยืม-คืนอุปกรณ์ไอที" class="w-7 h-7 object-contain">
+      </div>
+      <span class="font-display font-semibold text-slate-900 text-base leading-tight group-hover:text-blue-600 transition">ศูนย์ยืม-คืน<br class="hidden sm:block text-slate-500 font-normal text-xs">อุปกรณ์ไอที</span>
     </a>
-    <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-[var(--ink)]">
-      <a href="#หมวดหมู่" class="hover:text-[var(--navy)]">อุปกรณ์ให้ยืม</a>
-      <a href="#ขั้นตอน" class="hover:text-[var(--navy)]">ขั้นตอนการใช้งาน</a>
-      <a href="#จุดเด่น" class="hover:text-[var(--navy)]">จุดเด่นของระบบ</a>
-      <a href="#คำถาม" class="hover:text-[var(--navy)]">คำถามที่พบบ่อย</a>
+    <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+      <a href="#หมวดหมู่" class="hover:text-blue-600 transition">อุปกรณ์ให้ยืม</a>
+      <a href="#ขั้นตอน" class="hover:text-blue-600 transition">ขั้นตอนการใช้งาน</a>
+      <a href="#จุดเด่น" class="hover:text-blue-600 transition">จุดเด่นของระบบ</a>
+      <a href="#คำถาม" class="hover:text-blue-600 transition">คำถามที่พบบ่อย</a>
     </nav>
-    <a href="login.html" class="btn btn-primary !py-2 !px-5 text-sm">เข้าสู่ระบบ</a>
+    <a href="login.html" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-full shadow-md shadow-blue-500/20 transition transform hover:-translate-y-0.5">เข้าสู่ระบบ</a>
   </div>
 </header>
 
