@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupTabs();
   setupBookingModal();
   setupProfileModal();
+  setupClearMyHistory();
 
   await loadCategories();
   await loadEquipment();
@@ -164,6 +165,28 @@ function openBookingModal(eq) {
   modal.classList.remove("hidden");
 }
 
+/* ========================= เคลียร์ประวัติเก่าของฉัน ========================= */
+
+function setupClearMyHistory() {
+  document.getElementById("clear-my-history-btn").addEventListener("click", async () => {
+    if (!confirm('ล้างประวัติการยืมของฉันที่ "จบแล้ว" (คืนแล้ว/ยกเลิก) และเก่าแล้ว? รายการที่ยังไม่จบจะไม่ถูกแตะต้อง')) return;
+
+    const btn = document.getElementById("clear-my-history-btn");
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "กำลังล้าง...";
+
+    const { ok, data } = await Api.post("/bookings/clear-history/", null);
+
+    btn.disabled = false;
+    btn.textContent = original;
+
+    if (!ok) { alert(extractErrorMessage(data, "ล้างไม่สำเร็จ")); return; }
+    alert(`ล้างประวัติไปแล้ว ${data.deleted_count} รายการ`);
+    await loadBookingHistory();
+  });
+}
+
 async function loadBookingHistory() {
   const { ok, data } = await Api.get("/bookings/");
   const list = document.getElementById("booking-list");
@@ -221,6 +244,20 @@ function renderBookingRow(booking) {
 
 /* ========================= โปรไฟล์ของฉัน ========================= */
 
+/** คืนช่องอัปโหลดรูปโปรไฟล์กลับเป็นสถานะว่าง หรือโชว์รูปปัจจุบันของผู้ใช้ถ้ามี */
+function resetProfileImageDropzone() {
+  const preview = document.getElementById("profile-image-preview");
+  const icon = document.getElementById("profile-image-placeholder-icon");
+  if (currentUser && currentUser.profile_image) {
+    preview.src = currentUser.profile_image;
+    preview.classList.remove("hidden");
+    icon.classList.add("hidden");
+  } else {
+    preview.classList.add("hidden");
+    icon.classList.remove("hidden");
+  }
+}
+
 function setupProfileModal() {
   const modal = document.getElementById("profile-modal");
   const profileForm = document.getElementById("profile-form");
@@ -230,6 +267,8 @@ function setupProfileModal() {
     document.getElementById("profile-email-display").value = currentUser.email;
     profileForm.first_name.value = currentUser.first_name || "";
     profileForm.last_name.value = currentUser.last_name || "";
+    profileForm.student_id.value = currentUser.student_id || "";
+    resetProfileImageDropzone();
     document.getElementById("profile-error").classList.add("hidden");
     document.getElementById("profile-success").classList.add("hidden");
     modal.classList.remove("hidden");
@@ -237,6 +276,16 @@ function setupProfileModal() {
 
   document.getElementById("profile-modal-close").addEventListener("click", () => modal.classList.add("hidden"));
   document.getElementById("password-modal-close").addEventListener("click", () => modal.classList.add("hidden"));
+
+  // พรีวิวรูปที่เลือกก่อนอัปโหลดจริง
+  document.getElementById("profile-image-input").addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    if (!file) { resetProfileImageDropzone(); return; }
+    const preview = document.getElementById("profile-image-preview");
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove("hidden");
+    document.getElementById("profile-image-placeholder-icon").classList.add("hidden");
+  });
 
   // สลับแท็บ "แก้ไขข้อมูล" / "เปลี่ยนรหัสผ่าน" ภายใน modal เดียวกัน
   document.querySelectorAll(".profile-tab-btn").forEach((btn) => {
@@ -258,14 +307,24 @@ function setupProfileModal() {
     event.preventDefault();
     const errorBox = document.getElementById("profile-error");
     const successBox = document.getElementById("profile-success");
+    const submitBtn = document.getElementById("profile-submit-btn");
     errorBox.classList.add("hidden");
     successBox.classList.add("hidden");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "กำลังบันทึก...";
 
-    const formData = new FormData(profileForm);
-    const { ok, data } = await Api.patch("/auth/me/", {
-      first_name: formData.get("first_name"),
-      last_name: formData.get("last_name"),
-    });
+    // ใช้ FormData เสมอ (ไม่ใช่ JSON) เพราะต้องรองรับไฟล์รูปโปรไฟล์แบบ multipart
+    const formData = new FormData();
+    formData.set("first_name", profileForm.first_name.value);
+    formData.set("last_name", profileForm.last_name.value);
+    formData.set("student_id", profileForm.student_id.value);
+    const imageFile = document.getElementById("profile-image-input").files[0];
+    if (imageFile) formData.set("profile_image", imageFile);
+
+    const { ok, data } = await Api.postFormData("/auth/me/", formData, { method: "PATCH" });
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = "บันทึก";
 
     if (!ok) {
       errorBox.textContent = extractErrorMessage(data, "บันทึกไม่สำเร็จ");
@@ -277,6 +336,8 @@ function setupProfileModal() {
     currentUser = data;
     Api.setSession(Api.getToken(), currentUser);
     document.getElementById("welcome-text").textContent = `สวัสดี, ${currentUser.first_name || currentUser.username}`;
+    document.getElementById("profile-image-input").value = "";
+    resetProfileImageDropzone();
     successBox.textContent = "บันทึกข้อมูลโปรไฟล์สำเร็จแล้ว";
     successBox.classList.remove("hidden");
   });
