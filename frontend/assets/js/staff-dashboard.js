@@ -218,8 +218,9 @@ async function loadInventory() {
       </div>
       <div class="flex gap-2 flex-wrap">
         <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs add-unit-btn">+ เพิ่มเครื่อง</button>
+        <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs remove-unit-btn">- ลดเครื่อง</button>
         <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs toggle-active-btn">${eq.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button>
-        <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs delete-equipment-btn" style="color:#c33c3c;border-color:#c33c3c;">ลบ</button>
+        <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs delete-equipment-btn" style="color:#c33c3c;border-color:#c33c3c;">ลบทั้งรุ่น</button>
       </div>
     `;
 
@@ -231,6 +232,33 @@ async function loadInventory() {
         alert(extractErrorMessage(addData, "เพิ่มไม่สำเร็จ (หมายเลขนี้อาจถูกใช้ไปแล้ว)"));
         return;
       }
+      await loadInventory();
+    });
+
+    // "- ลดเครื่อง": ลบอุปกรณ์ "ทีละ 1 ชิ้น" ที่ยังว่างอยู่เท่านั้น (ลดจำนวนคงเหลือลง)
+    // ชิ้นที่กำลังถูกจอง/ยืมอยู่จะไม่โชว์ให้เลือกลบ ต้องรับคืนหรือยกเลิกการจองก่อนเสมอ
+    row.querySelector(".remove-unit-btn").addEventListener("click", async () => {
+      const { ok: listOk, data: units } = await Api.get(`/staff/equipment/${eq.id}/units/`);
+      if (!listOk) { alert("โหลดรายการเครื่องไม่สำเร็จ"); return; }
+
+      const removable = units.filter((u) => u.status === "available" || u.status === "disabled");
+      if (removable.length === 0) {
+        alert("ไม่มีเครื่องที่ลบได้ตอนนี้ (เครื่องที่เหลือกำลังถูกจอง/ยืมอยู่ทั้งหมด)");
+        return;
+      }
+
+      const serialList = removable.map((u) => u.serial_number).join(", ");
+      const chosenSerial = prompt(
+        `พิมพ์หมายเลขเครื่องที่จะลบออกจาก "${eq.name}"\n\nเครื่องที่ลบได้ตอนนี้: ${serialList}`,
+      );
+      if (!chosenSerial) return;
+
+      const match = removable.find((u) => u.serial_number === chosenSerial.trim());
+      if (!match) { alert("ไม่พบหมายเลขเครื่องนี้ในรายการที่ลบได้ กรุณาพิมพ์ให้ตรงกับที่แสดงไว้"); return; }
+      if (!confirm(`ลบเครื่องหมายเลข "${match.serial_number}" ทิ้งถาวร?`)) return;
+
+      const { ok: delOk, data: delData } = await Api.delete(`/staff/units/${match.id}/`);
+      if (!delOk) { alert(extractErrorMessage(delData, "ลบไม่สำเร็จ")); return; }
       await loadInventory();
     });
 
@@ -414,11 +442,7 @@ async function loadStudentList() {
           ${s.is_currently_suspended ? `· <span class="text-[#c33c3c]">พักสิทธิ์ถึง ${s.suspended_until ? formatDate(s.suspended_until) : "-"}</span>` : ""}
         </p>
       </div>
-      <div class="flex gap-2">
-        <button data-student-id="${s.id}" data-first-name="${s.first_name}" data-last-name="${s.last_name || ""}" data-student-code="${s.student_id || ""}"
-          class="btn btn-outline-navy !py-1.5 !px-3 text-xs edit-student-btn">แก้ไข</button>
-        ${s.is_currently_suspended ? `<button data-student-id="${s.id}" class="btn btn-outline-navy !py-1.5 !px-3 text-xs unsuspend-row-btn">ปลดล็อก</button>` : ""}
-      </div>
+      ${s.is_currently_suspended ? `<button data-student-id="${s.id}" class="btn btn-outline-navy !py-1.5 !px-3 text-xs unsuspend-row-btn">ปลดล็อก</button>` : ""}
     </div>
   `).join("");
 
@@ -426,24 +450,6 @@ async function loadStudentList() {
     btn.addEventListener("click", async () => {
       const { ok: unsuspendOk, data: unsuspendData } = await Api.post(`/staff/students/${btn.dataset.studentId}/unsuspend/`, null);
       if (!unsuspendOk) { alert(extractErrorMessage(unsuspendData, "ปลดล็อกไม่สำเร็จ")); return; }
-      loadStudentList();
-    });
-  });
-
-  // แก้ไขชื่อ-นามสกุล-รหัสนักศึกษา — ใช้แก้ให้บัญชีที่เคยถูกเพิ่มมาแบบข้อมูลไม่ครบ (เช่นไม่มีรหัสนักศึกษา)
-  list.querySelectorAll(".edit-student-btn").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const firstName = prompt("ชื่อ:", btn.dataset.firstName);
-      if (firstName === null) return;
-      const lastName = prompt("นามสกุล:", btn.dataset.lastName);
-      if (lastName === null) return;
-      const studentCode = prompt("รหัสนักศึกษา (เว้นว่างได้):", btn.dataset.studentCode);
-      if (studentCode === null) return;
-
-      const { ok, data } = await Api.patch(`/staff/students/${btn.dataset.studentId}/`, {
-        first_name: firstName, last_name: lastName, student_id: studentCode,
-      });
-      if (!ok) { alert(extractErrorMessage(data, "แก้ไขไม่สำเร็จ")); return; }
       loadStudentList();
     });
   });
