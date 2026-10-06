@@ -52,6 +52,9 @@
 
   <!-- ===== Tab: ประวัติการยืม ===== -->
   <section id="tab-history" class="hidden">
+    <div class="flex justify-end mb-4">
+      <button id="clear-my-history-btn" class="btn btn-outline-navy !py-1.5 !px-4 text-sm">ล้างประวัติเก่าของฉัน</button>
+    </div>
     <div id="booking-list" class="space-y-3"></div>
     <p id="booking-empty" class="hidden text-center text-sm text-[var(--ink)]/50 py-12">ยังไม่มีประวัติการยืม</p>
   </section>
@@ -96,10 +99,21 @@
       <button data-profile-tab="password" class="profile-tab-btn px-3 py-2 text-sm font-medium border-b-2 border-transparent text-[var(--ink)]/55">เปลี่ยนรหัสผ่าน</button>
     </div>
 
-    <!-- แก้ไขชื่อ-นามสกุล -->
+    <!-- แก้ไขชื่อ-นามสกุล/รหัสนักศึกษา/รูปโปรไฟล์ -->
     <form id="profile-form">
       <div id="profile-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
       <div id="profile-success" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#eafaf3;color:#1f7a4d;"></div>
+
+      <label class="block mb-4">
+        <span class="text-sm font-medium">รูปโปรไฟล์</span>
+        <label for="profile-image-input" id="profile-image-dropzone"
+          class="mt-1.5 flex flex-col items-center justify-center gap-1 w-20 h-20 rounded-full border-2 border-dashed border-[var(--line)] cursor-pointer hover:border-[var(--navy)] transition-colors bg-[var(--paper)] overflow-hidden mx-auto">
+          <svg id="profile-image-placeholder-icon" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" opacity="0.4"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+          <img id="profile-image-preview" class="hidden w-full h-full object-cover">
+        </label>
+        <input type="file" name="profile_image" accept="image/*" id="profile-image-input" class="hidden">
+        <p class="text-xs text-[var(--ink)]/45 text-center mt-1">คลิกที่วงกลมเพื่อเลือกรูป</p>
+      </label>
 
       <label class="block mb-3 text-sm text-[var(--ink)]/60">
         อีเมล (แก้ไขไม่ได้ — ติดต่อเจ้าหน้าที่หากต้องเปลี่ยน)
@@ -109,13 +123,17 @@
         <span class="text-sm font-medium">ชื่อ</span>
         <input type="text" name="first_name" required class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
       </label>
-      <label class="block mb-5">
+      <label class="block mb-4">
         <span class="text-sm font-medium">นามสกุล</span>
         <input type="text" name="last_name" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
       </label>
+      <label class="block mb-5">
+        <span class="text-sm font-medium">รหัสนักศึกษา</span>
+        <input type="text" name="student_id" placeholder="กรอกถ้ายังไม่มีในระบบ" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      </label>
       <div class="flex gap-3">
         <button type="button" id="profile-modal-close" class="btn btn-outline-navy flex-1">ปิด</button>
-        <button type="submit" class="btn btn-primary flex-1">บันทึก</button>
+        <button type="submit" id="profile-submit-btn" class="btn btn-primary flex-1">บันทึก</button>
       </div>
     </form>
 
