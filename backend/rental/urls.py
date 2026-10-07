@@ -34,6 +34,7 @@ urlpatterns = [
     # --- โมดูล C: การจอง (ฝั่งนักศึกษา) ---
     path("bookings/", views.MyBookingListCreateView.as_view(), name="my-booking-list"),
     path("bookings/<int:pk>/cancel/", views.MyBookingCancelView.as_view(), name="my-booking-cancel"),
+    path("bookings/<int:pk>/delete/", views.MyBookingDeleteView.as_view(), name="my-booking-delete"),
     path("bookings/clear-history/", views.MyBookingHistoryClearView.as_view(), name="my-booking-clear-history"),
 
     # --- โมดูล D: รับ-คืนอุปกรณ์ (ฝั่งเจ้าหน้าที่) ---
@@ -41,6 +42,7 @@ urlpatterns = [
     path("staff/bookings/lookup/", views.StaffBookingLookupView.as_view(), name="staff-booking-lookup"),
     path("staff/bookings/<int:pk>/confirm-pickup/", views.StaffConfirmPickupView.as_view(), name="staff-confirm-pickup"),
     path("staff/bookings/<int:pk>/confirm-return/", views.StaffConfirmReturnView.as_view(), name="staff-confirm-return"),
+    path("staff/bookings/<int:pk>/delete/", views.StaffBookingDeleteView.as_view(), name="staff-booking-delete"),
     path("staff/bookings/clear-history/", views.StaffBookingHistoryClearView.as_view(), name="staff-booking-clear-history"),
 
     # --- โมดูล E/F/G: แจ้งเตือน, บทลงโทษ, นักศึกษา, ภาพรวม (เจ้าหน้าที่) ---
