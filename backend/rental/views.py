@@ -479,6 +479,26 @@ class MyBookingCancelView(APIView):
         return Response(BookingSerializer(booking, context={"request": request}).data)
 
 
+class MyBookingDeleteView(APIView):
+    """
+    DELETE /api/bookings/<id>/delete/
+    นักศึกษาลบประวัติการยืมของตัวเอง "ทีละรายการ" — ลบได้เฉพาะรายการที่จบแล้ว
+    (คืนแล้ว/ยกเลิก) เท่านั้น รายการที่ยังไม่จบจะลบไม่ได้ไม่ว่ากรณีใด
+    """
+
+    permission_classes = [IsStudentUser]
+
+    def delete(self, request, pk):
+        booking = get_object_or_404(Booking, pk=pk, student=request.user)
+        if booking.status not in (Booking.Status.RETURNED, Booking.Status.CANCELLED):
+            return Response(
+                {"detail": "ลบได้เฉพาะรายการที่จบแล้วเท่านั้น (คืนแล้ว/ยกเลิก)"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        booking.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class MyBookingHistoryClearView(APIView):
     """
     POST /api/bookings/clear-history/
@@ -598,6 +618,26 @@ class StaffConfirmReturnView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         booking = booking_queryset().get(pk=booking.pk)
         return Response(BookingSerializer(booking, context={"request": request}).data)
+
+
+class StaffBookingDeleteView(APIView):
+    """
+    DELETE /api/staff/bookings/<id>/delete/
+    เจ้าหน้าที่ลบประวัติการยืมของนักศึกษาคนไหนก็ได้ "ทีละรายการ" — ลบได้เฉพาะรายการที่
+    จบแล้ว (คืนแล้ว/ยกเลิก) เท่านั้น รายการที่ยังไม่จบจะลบไม่ได้ไม่ว่ากรณีใด
+    """
+
+    permission_classes = [IsStaffUser]
+
+    def delete(self, request, pk):
+        booking = get_object_or_404(Booking, pk=pk)
+        if booking.status not in (Booking.Status.RETURNED, Booking.Status.CANCELLED):
+            return Response(
+                {"detail": "ลบได้เฉพาะรายการที่จบแล้วเท่านั้น (คืนแล้ว/ยกเลิก)"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        booking.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # ---------------------------------------------------------------------------
