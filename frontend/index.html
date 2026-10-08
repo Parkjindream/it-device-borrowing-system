@@ -26,49 +26,52 @@
       <span class="font-display font-semibold text-slate-900 text-base leading-tight group-hover:text-blue-600 transition">ศูนย์ยืม-คืน<br class="hidden sm:block text-slate-500 font-normal text-xs">อุปกรณ์ไอที</span>
     </a>
     <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-      <a href="#หมวดหมู่" class="hover:text-blue-600 transition">อุปกรณ์ให้ยืม</a>
-      <a href="#ขั้นตอน" class="hover:text-blue-600 transition">ขั้นตอนการใช้งาน</a>
-      <a href="#จุดเด่น" class="hover:text-blue-600 transition">จุดเด่นของระบบ</a>
-      <a href="#คำถาม" class="hover:text-blue-600 transition">คำถามที่พบบ่อย</a>
+      <a href="#หมวดหมู่" class="hover:text-blue-600 ">อุปกรณ์ให้ยืม</a>
+      <a href="#ขั้นตอน" class="hover:text-blue-600 ">ขั้นตอนการใช้งาน</a>
+      <a href="#จุดเด่น" class="hover:text-blue-600 ">จุดเด่นของระบบ</a>
+      <a href="#คำถาม" class="hover:text-blue-600 ">คำถามที่พบบ่อย</a>
     </nav>
     <a href="login.html" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-full shadow-md shadow-blue-500/20 transition transform hover:-translate-y-0.5">เข้าสู่ระบบ</a>
   </div>
 </header>
 
 <!-- ===== Hero ===== -->
-<section class="relative overflow-hidden" style="background: linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 100%);">
-  <div class="max-w-6xl mx-auto px-5 py-20 md:py-28 grid md:grid-cols-2 gap-12 items-center relative z-10">
-    <div class="text-white">
-      <p class="text-[var(--amber)] font-display font-medium mb-4 text-sm tracking-wide">สำหรับนักศึกษาและเจ้าหน้าที่ในวิทยาลัย</p>
-      <h1 class="font-display font-semibold text-4xl md:text-5xl leading-tight mb-6">
-        ยืมอุปกรณ์ไอที<br>ของวิทยาลัย ง่ายกว่าที่คิด
+<section class="bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-white relative overflow-hidden border-b border-blue-900/40">
+  <div class="max-w-6xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 gap-12 items-center relative z-10">
+    <div>
+      <span class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-800/50 px-3 py-1 rounded-full mb-4">
+        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+        สำหรับนักศึกษาและเจ้าหน้าที่ในวิทยาลัย
+      </span>
+      <h1 class="font-display font-bold text-3xl md:text-5xl leading-tight mb-6 tracking-tight text-white">
+        ยืมอุปกรณ์ไอที<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">ของวิทยาลัย ง่ายกว่าที่คิด</span>
       </h1>
-      <p class="text-white/75 text-lg leading-relaxed mb-8 max-w-md">
+      <p class="text-slate-300 text-base md:text-lg leading-relaxed mb-8 max-w-md font-light">
         จองโน้ตบุ๊ก กล้อง หรืออุปกรณ์ที่ต้องใช้ล่วงหน้าผ่านระบบออนไลน์
         เช็คได้ทันทีว่าเหลือกี่เครื่อง ไม่ต้องเดินไปถามหน้าเคาน์เตอร์ให้เสียเวลา
       </p>
-      <div class="flex flex-wrap gap-4">
-        <a href="login.html" class="btn btn-primary">เข้าสู่ระบบเพื่อจองอุปกรณ์</a>
-        <a href="#ขั้นตอน" class="btn btn-ghost">ดูขั้นตอนการใช้งาน</a>
+      <div class="flex flex-wrap gap-3">
+        <a href="login.html" class="bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm px-6 py-3 rounded-full shadow-lg shadow-blue-500/30 transition transform hover:-translate-y-0.5">เข้าสู่ระบบเพื่อจองอุปกรณ์</a>
+        <a href="#ขั้นตอน" class="bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-sm px-6 py-3 rounded-full transition">ดูขั้นตอนการใช้งาน</a>
       </div>
     </div>
 
-    <!-- ภาพประกอบ: การ์ดอุปกรณ์ลอยเป็นชั้น ๆ -->
-    <div class="relative h-72 md:h-96 hidden sm:block" aria-hidden="true">
-      <div class="absolute right-4 top-2 w-48 surface rounded-2xl p-4 shadow-xl rotate-[-4deg]">
-        <svg viewBox="0 0 48 48" class="w-9 h-9 mb-2" fill="none" stroke="var(--navy)" stroke-width="2.2"><rect x="6" y="9" width="36" height="24" rx="2"/><path d="M2 37h44l-3 4H5z" fill="var(--navy)" stroke="none"/></svg>
-        <p class="font-display font-medium text-sm text-[var(--ink)]">โน้ตบุ๊ก Dell</p>
-        <span class="badge badge-available mt-2">ว่าง 4/6</span>
+    <!-- ภาพประกอบลอยๆ -->
+    <div class="relative h-72 hidden sm:block" aria-hidden="true">
+      <div class="absolute right-4 top-2 w-48 bg-slate-900/90 border  p-4 rounded-2xl shadow-2xl backdrop-blur-md -rotate-2">
+        <svg viewBox="0 0 48 48" class="w-8 h-8 mb-2 stroke-blue-400" fill="none" stroke-width="2"><rect x="6" y="9" width="36" height="24" rx="2"/><path d="M2 37h44l-3 4H5z" class="fill-blue-400" stroke="none"/></svg>
+        <p class="font-display font-semibold text-sm text-slate-100">โน้ตบุ๊ก Dell</p>
+        <span class="mt-2 inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">ว่าง 4/6</span>
       </div>
-      <div class="absolute left-2 top-24 w-44 surface rounded-2xl p-4 shadow-xl rotate-[3deg]">
-        <svg viewBox="0 0 48 48" class="w-9 h-9 mb-2" fill="none" stroke="var(--teal)" stroke-width="2.2"><rect x="8" y="14" width="28" height="20" rx="3"/><circle cx="22" cy="24" r="6"/><rect x="17" y="8" width="10" height="7" rx="2"/></svg>
-        <p class="font-display font-medium text-sm text-[var(--ink)]">กล้องวิดีโอ</p>
-        <span class="badge badge-available mt-2">ว่าง 2/3</span>
+      <div class="absolute left-2 top-20 w-44 bg-slate-900/90 border  p-4 rounded-2xl shadow-2xl backdrop-blur-md rotate-3">
+        <svg viewBox="0 0 48 48" class="w-8 h-8 mb-2 stroke-cyan-400" fill="none" stroke-width="2"><rect x="8" y="14" width="28" height="20" rx="3"/><circle cx="22" cy="24" r="6"/><rect x="17" y="8" width="10" height="7" rx="2"/></svg>
+        <p class="font-display font-semibold text-sm text-slate-100">กล้องวิดีโอ</p>
+        <span class="mt-2 inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">ว่าง 2/3</span>
       </div>
-      <div class="absolute right-8 bottom-0 w-40 surface rounded-2xl p-4 shadow-xl rotate-[6deg]">
-        <svg viewBox="0 0 48 48" class="w-9 h-9 mb-2" fill="none" stroke="var(--amber-dark)" stroke-width="2.2"><rect x="14" y="6" width="20" height="30" rx="3"/><circle cx="24" cy="32" r="1.5" fill="var(--amber-dark)" stroke="none"/></svg>
-        <p class="font-display font-medium text-sm text-[var(--ink)]">แท็บเล็ต</p>
-        <span class="badge badge-awaiting mt-2">เหลือน้อย</span>
+      <div class="absolute right-8 bottom-0 w-40 bg-slate-900/90 border  p-4 rounded-2xl shadow-2xl backdrop-blur-md rotate-6">
+        <svg viewBox="0 0 48 48" class="w-8 h-8 mb-2 stroke-amber-400" fill="none" stroke-width="2"><rect x="14" y="6" width="20" height="30" rx="3"/><circle cx="24" cy="32" r="1.5" class="fill-amber-400" stroke="none"/></svg>
+        <p class="font-display font-semibold text-sm text-slate-100">แท็บเล็ต</p>
+        <span class="mt-2 inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">เหลือน้อย</span>
       </div>
     </div>
   </div>
