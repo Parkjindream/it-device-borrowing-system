@@ -115,6 +115,8 @@ function renderQueueRow(booking) {
     actionHtml = `<button class="btn btn-primary !py-1.5 !px-3 text-xs pickup-btn">ยืนยันรับของ</button>`;
   } else if (booking.status === "borrowed" || booking.status === "overdue") {
     actionHtml = `<button class="btn btn-primary !py-1.5 !px-3 text-xs return-btn">ยืนยันคืนของ</button>`;
+  } else if (booking.status === "returned" || booking.status === "cancelled") {
+    actionHtml = `<button class="btn btn-outline-navy !py-1.5 !px-3 text-xs delete-booking-btn" style="color:#c33c3c;border-color:#c33c3c;">ลบ</button>`;
   }
 
   row.innerHTML = `
@@ -140,6 +142,17 @@ function renderQueueRow(booking) {
 
   const returnBtn = row.querySelector(".return-btn");
   if (returnBtn) returnBtn.addEventListener("click", () => openConfirmModal(booking.id, "return"));
+
+  const deleteBtn = row.querySelector(".delete-booking-btn");
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", async () => {
+      if (!confirm("ลบรายการนี้ทิ้งถาวรหรือไม่?")) return;
+      const { ok, data } = await Api.delete(`/staff/bookings/${booking.id}/delete/`);
+      if (!ok) { alert(extractErrorMessage(data, "ลบไม่สำเร็จ")); return; }
+      await loadSummary();
+      await loadQueue();
+    });
+  }
 
   return row;
 }
@@ -216,13 +229,16 @@ async function loadInventory() {
           <p class="text-xs text-[var(--ink)]/55 mt-0.5">${eq.category?.name ?? ""} · เหลือ ${eq.available_units}/${eq.total_units} เครื่อง</p>
         </div>
       </div>
-      <div class="flex gap-2 flex-wrap">
+        <div class="flex gap-2 flex-wrap">
+        <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs edit-equipment-btn">แก้ไข/เปลี่ยนรูป</button>
         <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs add-unit-btn">+ เพิ่มเครื่อง</button>
         <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs remove-unit-btn">- ลดเครื่อง</button>
         <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs toggle-active-btn">${eq.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button>
         <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs delete-equipment-btn" style="color:#c33c3c;border-color:#c33c3c;">ลบทั้งรุ่น</button>
       </div>
     `;
+
+    row.querySelector(".edit-equipment-btn").addEventListener("click", () => openEquipmentModal(eq));
 
     row.querySelector(".add-unit-btn").addEventListener("click", async () => {
       const serial = prompt(`ระบุหมายเลขเครื่อง/ทรัพย์สินของ "${eq.name}" ที่จะเพิ่ม`);
@@ -281,48 +297,68 @@ async function loadInventory() {
   });
 }
 
-/** คืนช่องอัปโหลดรูปอุปกรณ์กลับเป็นสถานะว่าง (ไอคอน + ข้อความ "คลิกเพื่อเลือกรูปภาพ") */
+/** id ของอุปกรณ์ที่กำลังแก้ไข (null = เพิ่มรุ่นใหม่) */
+let editingEquipmentId = null;
+
+/** คืนช่องอัปโหลดรูปอุปกรณ์กลับเป็นสถานะว่าง */
 function resetEquipmentImageDropzone() {
   document.getElementById("equipment-image-preview").classList.add("hidden");
   document.getElementById("equipment-image-placeholder-icon").classList.remove("hidden");
   document.getElementById("equipment-image-placeholder-text").classList.remove("hidden");
 }
 
+/** openEquipmentModal() = เพิ่มรุ่นใหม่ / openEquipmentModal(eq) = แก้ไข + เปลี่ยนรูป */
+async function openEquipmentModal(eq = null) {
+  editingEquipmentId = eq ? eq.id : null;
+  const form = document.getElementById("equipment-form");
+  const select = document.getElementById("equipment-category-select");
+  select.innerHTML = "";
+  const { ok, data } = await Api.get("/equipment-categories/");
+  if (ok) {
+    data.forEach((cat) => {
+      const opt = document.createElement("option");
+      opt.value = cat.id;
+      opt.textContent = cat.name;
+      select.appendChild(opt);
+    });
+  }
+  form.reset();
+  resetEquipmentImageDropzone();
+
+  const title = document.getElementById("equipment-modal-title");
+  if (eq) {
+    if (title) title.textContent = "แก้ไขรุ่นอุปกรณ์";
+    form.name.value = eq.name;
+    form.max_borrow_days.value = eq.max_borrow_days;
+    if (eq.category) select.value = eq.category.id;
+    if (eq.image) {
+      const preview = document.getElementById("equipment-image-preview");
+      preview.src = eq.image;
+      preview.classList.remove("hidden");
+      document.getElementById("equipment-image-placeholder-icon").classList.add("hidden");
+      document.getElementById("equipment-image-placeholder-text").classList.add("hidden");
+    }
+  } else if (title) {
+    title.textContent = "เพิ่มรุ่นอุปกรณ์ใหม่";
+  }
+
+  document.getElementById("equipment-modal-error").classList.add("hidden");
+  document.getElementById("equipment-modal").classList.remove("hidden");
+}
+
 function setupEquipmentModal() {
   const modal = document.getElementById("equipment-modal");
-  document.getElementById("new-equipment-btn").addEventListener("click", async () => {
-    const select = document.getElementById("equipment-category-select");
-    select.innerHTML = "";
-    const { ok, data } = await Api.get("/equipment-categories/");
-    if (ok) {
-      data.forEach((cat) => {
-        const opt = document.createElement("option");
-        opt.value = cat.id;
-        opt.textContent = cat.name;
-        select.appendChild(opt);
-      });
-    }
-    document.getElementById("equipment-form").reset();
-    resetEquipmentImageDropzone();
-    document.getElementById("equipment-modal-error").classList.add("hidden");
-    modal.classList.remove("hidden");
-  });
-
+  document.getElementById("new-equipment-btn").addEventListener("click", () => openEquipmentModal());
   document.getElementById("equipment-modal-cancel").addEventListener("click", () => modal.classList.add("hidden"));
 
-  // พรีวิวรูปที่เลือกก่อนอัปโหลดจริง — สลับจากไอคอน+ข้อความ เป็นรูปที่เลือก
   document.getElementById("equipment-image-input").addEventListener("change", (event) => {
     const file = event.target.files[0];
-    const preview = document.getElementById("equipment-image-preview");
-    const icon = document.getElementById("equipment-image-placeholder-icon");
-    const text = document.getElementById("equipment-image-placeholder-text");
-
     if (!file) { resetEquipmentImageDropzone(); return; }
-
+    const preview = document.getElementById("equipment-image-preview");
     preview.src = URL.createObjectURL(file);
     preview.classList.remove("hidden");
-    icon.classList.add("hidden");
-    text.classList.add("hidden");
+    document.getElementById("equipment-image-placeholder-icon").classList.add("hidden");
+    document.getElementById("equipment-image-placeholder-text").classList.add("hidden");
   });
 
   document.getElementById("equipment-form").addEventListener("submit", async (event) => {
@@ -333,16 +369,17 @@ function setupEquipmentModal() {
     submitBtn.disabled = true;
     submitBtn.textContent = "กำลังบันทึก...";
 
-    // ใช้ FormData เสมอ (ไม่ใช่ JSON) เพราะต้องรองรับไฟล์รูปภาพแบบ multipart
     const formData = new FormData();
     formData.set("category", form.category.value);
     formData.set("name", form.name.value);
     formData.set("max_borrow_days", form.max_borrow_days.value);
-    formData.set("is_active", "true");
+    if (!editingEquipmentId) formData.set("is_active", "true");
     const imageFile = document.getElementById("equipment-image-input").files[0];
     if (imageFile) formData.set("image", imageFile);
 
-    const { ok, data } = await Api.postFormData("/staff/equipment/", formData);
+    const { ok, data } = editingEquipmentId
+      ? await Api.postFormData(`/staff/equipment/${editingEquipmentId}/`, formData, { method: "PATCH" })
+      : await Api.postFormData("/staff/equipment/", formData);
 
     submitBtn.disabled = false;
     submitBtn.textContent = "บันทึก";
@@ -352,7 +389,6 @@ function setupEquipmentModal() {
       errorBox.classList.remove("hidden");
       return;
     }
-
     modal.classList.add("hidden");
     await loadInventory();
   });
@@ -442,7 +478,9 @@ async function loadStudentList() {
           ${s.is_currently_suspended ? `· <span class="text-[#c33c3c]">พักสิทธิ์ถึง ${s.suspended_until ? formatDate(s.suspended_until) : "-"}</span>` : ""}
         </p>
       </div>
-      ${s.is_currently_suspended ? `<button data-student-id="${s.id}" class="btn btn-outline-navy !py-1.5 !px-3 text-xs unsuspend-row-btn">ปลดล็อก</button>` : ""}
+      <div class="flex gap-2">
+        ${s.is_currently_suspended ? `<button data-student-id="${s.id}" class="btn btn-outline-navy !py-1.5 !px-3 text-xs unsuspend-row-btn">ปลดล็อก</button>` : ""}
+      </div>
     </div>
   `).join("");
 
@@ -534,7 +572,7 @@ function setupClearData() {
     const original = button.textContent;
     button.disabled = true;
     button.textContent = "กำลังล้าง...";
-    const { ok, data } = await Api.post("/staff/notifications/clear/", null);
+    const { ok, data } = await Api.post("/staff/notifications/clear/", { clear_all: true });
     button.disabled = false;
     button.textContent = original;
     if (!ok) { alert(extractErrorMessage(data, "ล้างไม่สำเร็จ")); return; }
@@ -543,16 +581,17 @@ function setupClearData() {
   }
 
   async function clearBookingHistory(button) {
-    if (!confirm('ล้างประวัติการยืมที่ "จบแล้ว" (คืนแล้ว/ยกเลิก) และเก่ากว่าเกณฑ์ที่ตั้งไว้? รายการที่ยังไม่จบจะไม่ถูกแตะต้อง')) return;
+    if (!confirm('ล้างประวัติการยืมที่ "จบแล้ว" (คืนแล้ว/ยกเลิก) ทั้งหมดตอนนี้? รายการที่ยังไม่จบจะไม่ถูกแตะต้อง')) return;
     const original = button.textContent;
     button.disabled = true;
     button.textContent = "กำลังล้าง...";
-    const { ok, data } = await Api.post("/staff/bookings/clear-history/", null);
+    const { ok, data } = await Api.post("/staff/bookings/clear-history/", { clear_all: true });
     button.disabled = false;
     button.textContent = original;
     if (!ok) { alert(extractErrorMessage(data, "ล้างไม่สำเร็จ")); return; }
     alert(`ล้างประวัติการยืมไปแล้ว ${data.deleted_count} รายการ`);
-    loadSummary();
+    await loadSummary();
+    await loadQueue();
   }
 
   document.getElementById("clear-notifications-btn").addEventListener("click", (e) => clearNotifications(e.target));

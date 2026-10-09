@@ -167,13 +167,17 @@ function fallbackEquipmentImage(name) {
   const n = (name || "").toLowerCase();
   const isNested = location.pathname.includes("/student/") || location.pathname.includes("/staff/");
   const base = `${isNested ? "../" : ""}assets/img/products/`;
-  if (n.includes("ipad")) return base + "ipad.svg";
+  if (n.includes("ipad")) return base + "ipad.png";
   if (n.includes("esp32")) return base + "esp32.svg";
   if (n.includes("esp8266")) return base + "esp8266.svg";
   if (n.includes("raspberry") || n.includes("pi 4") || n.includes("pi4")) return base + "raspberrypi.svg";
   if (n.includes("arduino")) return base + "arduino.svg";
-  if (n.includes("โน้ตบุ๊ก") || n.includes("notebook") || n.includes("laptop")) return base + "laptop.svg";
-  return base + "generic.svg";
+  if (n.includes("กล้อง") || n.includes("camera") || n.includes("canon")) return base + "camera.png";
+  if (n.includes("เครื่องพิมพ์") || n.includes("printer") || n.includes("laserjet")) return base + "generic.png";
+  if (n.includes("dell") || n.includes("latitude")) return base + "dell.png";
+  if (n.includes("lenovo") || n.includes("thinkpad")) return base + "lenovo.png";
+  if (n.includes("โน้ตบุ๊ก") || n.includes("notebook") || n.includes("laptop")) 
+  return base + "lenovo.png";
 }
 
 function equipmentImageSrc(eq) {
