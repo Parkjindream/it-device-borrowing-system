@@ -62,16 +62,18 @@ const Api = {
       }
     }
 
-    if (response.status === 401) {
-      // token หมดอายุ/ไม่ถูกต้อง → เคลียร์ session แล้วเด้งไปหน้า login
-      this.clearSession();
-      if (!location.pathname.endsWith("login.html")) {
-        const redirect = encodeURIComponent(location.pathname);
-        location.href = `/login.html?next=${redirect}`;
-      }
-    }
-
+    this.handleUnauthorized(response.status);
     return { ok: response.ok, status: response.status, data };
+  },
+
+  /** token หมดอายุ/ไม่ถูกต้อง → เคลียร์ session แล้วเด้งไปหน้า login (ใช้ path แบบ relative กัน "Cannot GET /login.html") */
+  handleUnauthorized(status) {
+    if (status !== 401) return;
+    this.clearSession();
+    if (!location.pathname.endsWith("login.html")) {
+      const nested = location.pathname.includes("/student/") || location.pathname.includes("/staff/");
+      location.href = `${nested ? "../" : ""}login.html`;
+    }
   },
 
   get(path) {
@@ -98,6 +100,7 @@ const Api = {
     if (response.status !== 204) {
       try { data = await response.json(); } catch (_e) { data = null; }
     }
+    this.handleUnauthorized(response.status);
     return { ok: response.ok, status: response.status, data };
   },
 
@@ -176,8 +179,8 @@ function fallbackEquipmentImage(name) {
   if (n.includes("เครื่องพิมพ์") || n.includes("printer") || n.includes("laserjet")) return base + "generic.png";
   if (n.includes("dell") || n.includes("latitude")) return base + "dell.png";
   if (n.includes("lenovo") || n.includes("thinkpad")) return base + "lenovo.png";
-  if (n.includes("โน้ตบุ๊ก") || n.includes("notebook") || n.includes("laptop")) 
-  return base + "lenovo.png";
+  if (n.includes("โน้ตบุ๊ก") || n.includes("notebook") || n.includes("laptop")) return base + "lenovo.png";
+  return base + "generic.png"; // ค่าเริ่มต้น กัน src="undefined" เมื่อชื่อไม่ตรงเงื่อนไขใด
 }
 
 function equipmentImageSrc(eq) {
@@ -197,4 +200,11 @@ function debounce(fn, delay) {
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), delay);
   };
+}
+
+/** กัน HTML/สคริปต์แฝงในข้อความที่ผู้ใช้พิมพ์เอง (เช่นชื่อนักศึกษา) ก่อนใส่ลง innerHTML */
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
 }
