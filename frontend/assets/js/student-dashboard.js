@@ -1,5 +1,7 @@
 let currentUser = null;
 let allEquipment = [];
+const MAX_ADVANCE_DAYS = 7; // ต้องตรงกับ DEFAULT_MAX_ADVANCE_DAYS ฝั่ง backend (จองล่วงหน้าได้ไม่เกินกี่วัน)
+let currentMaxBorrowDays = 1; // จำนวนวันยืมสูงสุดของอุปกรณ์ที่กำลังจอง
 let activeBooking = null; // รายการที่ยังไม่จบของฉัน (รอรับของ/กำลังยืม/เกินกำหนด) — มีได้สูงสุด 1 รายการ
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -138,9 +140,44 @@ function renderEquipmentCard(eq) {
   return card;
 }
 
+/** แปลง Date เป็น "YYYY-MM-DD" ตามเวลาท้องถิ่น (toISOString เป็น UTC จะผิดวันตอนก่อน 07:00 น. ของไทย) */
+function toISODate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function addDaysISO(iso, n) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return toISODate(new Date(y, m - 1, d + n));
+}
+
+/** ล็อกช่องวันที่: เริ่มยืมได้ตั้งแต่วันนี้ถึง +7 วัน / วันคืนไม่ก่อนวันเริ่ม และไม่เกินจำนวนวันยืมสูงสุด */
+function syncBookingDates() {
+  const form = document.getElementById("booking-form");
+  const today = toISODate(new Date());
+  form.start_date.min = today;
+  form.start_date.max = addDaysISO(today, MAX_ADVANCE_DAYS);
+
+  if (!form.start_date.value || form.start_date.value < today) form.start_date.value = today;
+  if (form.start_date.value > form.start_date.max) form.start_date.value = form.start_date.max;
+
+  const start = form.start_date.value;
+  const lastReturn = addDaysISO(start, currentMaxBorrowDays - 1); // นับรวมวันเริ่ม เช่น 3 วัน: 10 → 12
+  form.end_date.min = start;
+  form.end_date.max = lastReturn;
+  if (!form.end_date.value || form.end_date.value < start || form.end_date.value > lastReturn) {
+    form.end_date.value = lastReturn;
+  }
+
+  document.getElementById("modal-equipment-meta").textContent =
+    `ยืมได้สูงสุด ${currentMaxBorrowDays} วัน/ครั้ง — คืนได้ไม่เกินวันที่ ${formatDate(lastReturn)} · จองล่วงหน้าได้ไม่เกิน ${MAX_ADVANCE_DAYS} วัน`;
+}
+
 function setupBookingModal() {
   const modal = document.getElementById("booking-modal");
   const form = document.getElementById("booking-form");
+
+  form.start_date.addEventListener("change", syncBookingDates);
+  form.end_date.addEventListener("change", syncBookingDates);
 
   document.getElementById("modal-cancel-btn").addEventListener("click", () => modal.classList.add("hidden"));
 
@@ -184,11 +221,10 @@ function openBookingModal(eq) {
   const modalImg = document.getElementById("modal-equipment-image");
   if (modalImg) modalImg.src = equipmentImageSrc(eq);
   document.getElementById("modal-equipment-name").textContent = eq.name;
-  document.getElementById("modal-equipment-meta").textContent = `ยืมได้สูงสุด ${eq.max_borrow_days} วัน/ครั้ง`;
-
-  const today = new Date().toISOString().split("T")[0];
-  form.start_date.min = today;
-  form.end_date.min = today;
+  currentMaxBorrowDays = Math.max(1, Number(eq.max_borrow_days) || 1);
+  form.start_date.value = "";
+  form.end_date.value = "";
+  syncBookingDates();
 
   modal.classList.remove("hidden");
 }
