@@ -325,6 +325,9 @@ async function openEquipmentModal(eq = null) {
   form.reset();
   resetEquipmentImageDropzone();
 
+  const unitsWrap = document.getElementById("initial-units-wrap");
+  if (unitsWrap) unitsWrap.classList.toggle("hidden", Boolean(eq)); // ช่องจำนวนเครื่องใช้ตอนเพิ่มรุ่นใหม่เท่านั้น
+
   const title = document.getElementById("equipment-modal-title");
   if (eq) {
     if (title) title.textContent = "แก้ไขรุ่นอุปกรณ์";
@@ -373,7 +376,11 @@ function setupEquipmentModal() {
     formData.set("category", form.category.value);
     formData.set("name", form.name.value);
     formData.set("max_borrow_days", form.max_borrow_days.value);
-    if (!editingEquipmentId) formData.set("is_active", "true");
+    if (!editingEquipmentId) {
+      formData.set("is_active", "true");
+      const unitsInput = document.getElementById("initial-units-input");
+      formData.set("initial_units", unitsInput && unitsInput.value !== "" ? unitsInput.value : "0");
+    }
     const imageFile = document.getElementById("equipment-image-input").files[0];
     if (imageFile) formData.set("image", imageFile);
 
