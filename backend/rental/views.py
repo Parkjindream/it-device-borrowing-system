@@ -26,6 +26,7 @@ from .services import (
     BookingError, create_booking, cancel_booking, confirm_pickup, confirm_return, unsuspend_student,
 )
 from .jobs import cleanup_old_booking_history, cleanup_old_notification_logs
+from .notifications import build_frontend_base_url, notify_accounts_created_background
 from .serializers import (
     UserSerializer,
     ProfileUpdateSerializer,
@@ -690,6 +691,8 @@ class StaffStudentListCreateView(APIView):
         serializer = StudentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        # แจ้งทางอีเมลว่าถูกเพิ่มเข้าระบบ พร้อมลิงก์ให้ตั้งรหัสผ่านเอง
+        notify_accounts_created_background([user], build_frontend_base_url(request))
         return Response(StaffStudentSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
@@ -725,7 +728,8 @@ class StaffStudentImportView(APIView):
     """
     POST /api/staff/students/import/  {"students": [{email, first_name, last_name, student_id}, ...]}
     นำเข้านักศึกษาทีละหลายคน (สูงสุด 500 แถว/ครั้ง) — แถวไหนผิดจะข้าม แล้วรายงานเหตุผลกลับไป
-    บัญชีที่สร้างจะยังไม่มีรหัสผ่าน นักศึกษาใช้ "ลืมรหัสผ่าน" เพื่อตั้งรหัสผ่านครั้งแรกเอง
+    บัญชีที่สร้างจะยังไม่มีรหัสผ่าน ระบบส่งอีเมลต้อนรับพร้อมลิงก์ตั้งรหัสผ่านให้ทุกคนอัตโนมัติ
+    (ถ้าลิงก์หมดอายุ นักศึกษาใช้ "ลืมรหัสผ่าน" ขอลิงก์ใหม่ได้)
     """
 
     permission_classes = [IsStaffUser]
@@ -737,7 +741,7 @@ class StaffStudentImportView(APIView):
         if len(rows) > 500:
             return Response({"detail": "นำเข้าได้ครั้งละไม่เกิน 500 รายการ"}, status=status.HTTP_400_BAD_REQUEST)
 
-        created, errors = 0, []
+        created, errors, new_users = 0, [], []
         seen_emails = set()
         for index, row in enumerate(rows, start=1):
             if not isinstance(row, dict):
@@ -756,12 +760,13 @@ class StaffStudentImportView(APIView):
                 "student_id": row.get("student_id", ""),
             })
             if serializer.is_valid():
-                serializer.save()
+                new_users.append(serializer.save())
                 created += 1
             else:
                 first_error = next(iter(serializer.errors.values()))
                 errors.append({"row": index, "email": email, "reason": str(first_error[0])})
 
+        notify_accounts_created_background(new_users, build_frontend_base_url(request))
         return Response({"created": created, "skipped": len(errors), "errors": errors[:100]})
 
 
