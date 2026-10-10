@@ -32,6 +32,7 @@ x-backend-entrypoint: &backend-entrypoint
   - docker-entrypoint
 
 services:
+  # PostgreSQL ใน container — ถ้าตั้ง DB_HOST ใน .env ให้ไปใช้ server อื่น ตัวนี้ยังรันอยู่แต่ไม่ถูกใช้
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -58,21 +59,25 @@ services:
     restart: "no"
     env_file: .env
     environment:
-      DB_HOST: db
-      DB_PORT: 5432
+      # ค่าเริ่มต้นใช้ container "db" — จะใช้ PostgreSQL บนเครื่อง host ให้ตั้ง DB_HOST/DB_PORT ใน .env
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
     depends_on:
       db:
         condition: service_healthy
     entrypoint: *backend-entrypoint
     command: ["migrate"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # ใช้ต่อ PostgreSQL บนเครื่อง host (Linux ต้องมีบรรทัดนี้)
 
   backend:
     build: ./backend
     restart: unless-stopped
     env_file: .env
     environment:
-      DB_HOST: db
-      DB_PORT: 5432
+      # ค่าเริ่มต้นใช้ container "db" — จะใช้ PostgreSQL บนเครื่อง host ให้ตั้ง DB_HOST/DB_PORT ใน .env
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
       USE_X_FORWARDED_PROTO: "true"
       # proxy หน้า Django มี 2 ชั้น: cloudflared + nginx (ใช้อ่าน IP จริงของผู้ใช้ไว้จำกัดความถี่ login)
       NUM_PROXIES: "2"
@@ -86,6 +91,8 @@ services:
       - "8000"
     entrypoint: *backend-entrypoint
     command: ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # ใช้ต่อ PostgreSQL บนเครื่อง host (Linux ต้องมีบรรทัดนี้)
 
   # งานอัตโนมัติ (no-show, แจ้งเตือนอีเมล, ปลดพักสิทธิ์) — แยก container ต่างหาก
   # รันคนละโปรเซสจากเว็บ กันงานพื้นหลังไปแย่ง worker ที่ใช้ตอบ request หน้าเว็บ
@@ -94,8 +101,9 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DB_HOST: db
-      DB_PORT: 5432
+      # ค่าเริ่มต้นใช้ container "db" — จะใช้ PostgreSQL บนเครื่อง host ให้ตั้ง DB_HOST/DB_PORT ใน .env
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -103,6 +111,8 @@ services:
       - media_data:/app/media
     entrypoint: *backend-entrypoint
     command: ["python", "manage.py", "run_scheduler"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # ใช้ต่อ PostgreSQL บนเครื่อง host (Linux ต้องมีบรรทัดนี้)
 
   # [ปิดไว้ก่อน — เปิดใช้: ลบ # หน้าบรรทัดของ service นี้]
   # สำรองฐานข้อมูลทุกวันลง ./backups บนเครื่อง ลบไฟล์ที่เก่าเกิน BACKUP_KEEP_DAYS วันอัตโนมัติ
@@ -110,7 +120,8 @@ services:
   #   image: postgres:16-alpine
   #   restart: unless-stopped
   #   environment:
-  #     PGHOST: db
+  #     PGHOST: ${DB_HOST:-db}
+  #     PGPORT: ${DB_PORT:-5432}
   #     PGDATABASE: ${DB_NAME:-it_lending_db}
   #     PGUSER: ${DB_USER:-postgres}
   #     PGPASSWORD: ${DB_PASSWORD}
