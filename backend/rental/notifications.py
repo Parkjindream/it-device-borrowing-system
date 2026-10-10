@@ -11,9 +11,16 @@ NotificationLog ไว้เสมอ เพื่อให้เจ้าหน
 - jobs.cancel_expired_bookings() -> notify_auto_cancelled
 - jobs.run_daily_due_date_checks() -> notify_reminder_due_soon / due_today / overdue
 """
+import logging
+import threading
+
 from django.conf import settings
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
+from django.db import connection
 from django.utils import timezone
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from .models import NotificationLog, PenaltySettings
 
@@ -177,3 +184,63 @@ def notify_cancelled_by_student(booking):
     # ถ้ายังไม่ได้เพิ่ม Trigger.CANCELLED_BY_STUDENT ใน models.py จะใช้ AUTO_CANCELLED แทนชั่วคราว (ไม่ทำให้ระบบพัง)
     trigger = getattr(NotificationLog.Trigger, "CANCELLED_BY_STUDENT", NotificationLog.Trigger.AUTO_CANCELLED)
     _send(booking.student, trigger, subject, message, booking=booking)
+
+
+# ---------------------------------------------------------------------------
+# อีเมลต้อนรับ: เจ้าหน้าที่เพิ่มนักศึกษาเข้าระบบ + ลิงก์ให้ตั้งรหัสผ่านเอง
+# ---------------------------------------------------------------------------
+_logger = logging.getLogger(__name__)
+
+
+def build_frontend_base_url(request):
+    """
+    ที่อยู่หน้าเว็บที่จะฝังในลิงก์อีเมล: ถ้าตั้ง FRONTEND_URL เป็นที่อยู่จริง (ไม่ใช่ localhost) ใช้ค่านั้น
+    ไม่งั้นใช้ที่อยู่เดียวกับที่เจ้าหน้าที่กำลังเปิดเว็บอยู่ (เหมาะกับ Cloudflare ที่ URL เปลี่ยนเรื่อย ๆ)
+    """
+    configured = (getattr(settings, "FRONTEND_URL", "") or "").rstrip("/")
+    if configured and "127.0.0.1" not in configured and "localhost" not in configured:
+        return configured
+    return f"{request.scheme}://{request.get_host()}"
+
+
+def notify_account_created(user, base_url):
+    """ส่งอีเมลแจ้งว่าถูกเพิ่มเข้าระบบ พร้อมลิงก์ตั้งรหัสผ่านครั้งแรก"""
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = PasswordResetTokenGenerator().make_token(user)
+    link = f"{base_url}/reset-password.html?uid={uid}&token={token}"
+    name = f"{user.first_name} {user.last_name}".strip() or user.email
+    code_line = f"รหัสนักศึกษา: {user.student_id}\n" if user.student_id else ""
+    subject = "คุณถูกเพิ่มเข้าสู่ระบบยืม-คืนอุปกรณ์ไอที — ตั้งรหัสผ่านของคุณ"
+    message = (
+        f"สวัสดี {name}\n\n"
+        f"เจ้าหน้าที่ได้เพิ่มคุณเข้าสู่ระบบยืม-คืนอุปกรณ์ไอทีเรียบร้อยแล้ว\n"
+        f"อีเมลสำหรับเข้าสู่ระบบ: {user.email}\n"
+        f"{code_line}\n"
+        f"กรุณาคลิกลิงก์นี้เพื่อตั้งรหัสผ่านของคุณเอง:\n{link}\n\n"
+        f"ลิงก์นี้ใช้ได้ 24 ชั่วโมง หากหมดอายุแล้ว ให้กด \"ลืมรหัสผ่าน\" ที่หน้าเข้าสู่ระบบเพื่อขอลิงก์ใหม่\n"
+        f"หากคุณไม่ได้คาดหวังอีเมลนี้ กรุณาเพิกเฉย"
+    )
+    trigger = getattr(NotificationLog.Trigger, "ACCOUNT_CREATED", NotificationLog.Trigger.PASSWORD_RESET_REQUESTED)
+    _send(user, trigger, subject, message)
+
+
+def notify_accounts_created_background(users, base_url):
+    """
+    ส่งอีเมลต้อนรับหลายคนใน background thread — ไม่ให้หน้าเว็บค้างรอ SMTP ตอนนำเข้ารายชื่อเยอะ ๆ
+    (Gmail ฟรีส่งได้ประมาณ 500 ฉบับ/วัน ถ้านำเข้าเกินนั้น ส่วนที่เหลือจะส่งไม่สำเร็จ ดูได้ที่แท็บประวัติอีเมล)
+    """
+    users = list(users)
+    if not users:
+        return
+
+    def worker():
+        try:
+            for u in users:
+                try:
+                    notify_account_created(u, base_url)
+                except Exception:  # กันทั้งชุดล้มเพราะคนเดียว
+                    _logger.exception("ส่งอีเมลต้อนรับไม่สำเร็จ: %s", getattr(u, "email", "?"))
+        finally:
+            connection.close()
+
+    threading.Thread(target=worker, daemon=True).start()
