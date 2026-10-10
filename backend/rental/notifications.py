@@ -68,9 +68,14 @@ def notify_booking_confirmed(booking):
 def notify_pickup_success(booking):
     equipment_name = booking.unit.equipment.name
     subject = f"รับอุปกรณ์ '{equipment_name}' เรียบร้อยแล้ว"
+    note_text = (
+        f"\nหมายเหตุสภาพอุปกรณ์ตอนส่งมอบ: {booking.pickup_condition_note}\n"
+        if booking.pickup_condition_note else ""
+    )
     message = (
         f"เจ้าหน้าที่ได้ส่งมอบอุปกรณ์ '{equipment_name}' (รหัสการจอง {booking.booking_code}) ให้คุณเรียบร้อยแล้ว\n"
-        f"กรุณานำมาคืนภายในวันที่ {booking.requested_end_date:%d/%m/%Y}\n\n"
+        f"กรุณานำมาคืนภายในวันที่ {booking.requested_end_date:%d/%m/%Y}\n"
+        f"{note_text}\n"
         f"ระบบจะส่งอีเมลเตือนให้อีกครั้งก่อนถึงกำหนดคืน"
     )
     _send(booking.student, NotificationLog.Trigger.PICKUP_SUCCESS, subject, message, booking=booking)
@@ -113,11 +118,22 @@ def notify_reminder_overdue(booking):
     _send(booking.student, NotificationLog.Trigger.REMINDER_OVERDUE, subject, message, booking=booking)
 
 
-def notify_return_success(booking):
+def notify_return_success(booking, is_damaged=False):
     equipment_name = booking.unit.equipment.name
     subject = f"รับคืนอุปกรณ์ '{equipment_name}' เรียบร้อยแล้ว"
+    if is_damaged:
+        subject = f"รับคืนอุปกรณ์ '{equipment_name}' — พบความเสียหาย"
+    note_text = ""
+    if is_damaged or booking.return_condition_note:
+        note_text = "\n"
+        if is_damaged:
+            note_text += "เจ้าหน้าที่ตรวจพบว่าอุปกรณ์ชำรุด/เสียหายขณะรับคืน\n"
+        if booking.return_condition_note:
+            note_text += f"รายละเอียดจากเจ้าหน้าที่: {booking.return_condition_note}\n"
+        note_text += "หากมีข้อสงสัย กรุณาติดต่อเจ้าหน้าที่ห้องโสตทัศนศึกษา\n"
     message = (
         f"เจ้าหน้าที่ได้รับคืนอุปกรณ์ '{equipment_name}' (รหัสการจอง {booking.booking_code}) เรียบร้อยแล้ว\n"
+        f"{note_text}\n"
         f"ขอบคุณที่ใช้บริการศูนย์ยืม-คืนอุปกรณ์ไอที"
     )
     _send(booking.student, NotificationLog.Trigger.RETURN_SUCCESS, subject, message, booking=booking)
@@ -148,3 +164,16 @@ def notify_auto_cancelled(booking):
         f"หากยังต้องการใช้งาน สามารถจองใหม่ได้ทันทีผ่านระบบ"
     )
     _send(booking.student, NotificationLog.Trigger.AUTO_CANCELLED, subject, message, booking=booking)
+
+
+def notify_cancelled_by_student(booking):
+    """แจ้งนักศึกษาว่าการจองถูกยกเลิกเรียบร้อยตามที่ขอ"""
+    equipment_name = booking.unit.equipment.name
+    subject = f"ยกเลิกการจอง '{equipment_name}' เรียบร้อยแล้ว"
+    message = (
+        f"คุณได้ยกเลิกการจองอุปกรณ์ '{equipment_name}' (รหัสการจอง {booking.booking_code}) เรียบร้อยแล้ว\n\n"
+        f"หากยังต้องการใช้งาน สามารถจองใหม่ได้ทันทีผ่านระบบ"
+    )
+    # ถ้ายังไม่ได้เพิ่ม Trigger.CANCELLED_BY_STUDENT ใน models.py จะใช้ AUTO_CANCELLED แทนชั่วคราว (ไม่ทำให้ระบบพัง)
+    trigger = getattr(NotificationLog.Trigger, "CANCELLED_BY_STUDENT", NotificationLog.Trigger.AUTO_CANCELLED)
+    _send(booking.student, trigger, subject, message, booking=booking)
