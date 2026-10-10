@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -180,14 +181,40 @@ class EquipmentDetailSerializer(EquipmentListSerializer):
 class EquipmentWriteSerializer(serializers.ModelSerializer):
     """เจ้าหน้าที่ใช้เพิ่ม/แก้ไข 'รุ่น' อุปกรณ์ (รองรับอัปโหลดรูปแบบ multipart)"""
 
+    # จำนวนเครื่องที่ให้ระบบสร้างให้อัตโนมัติตอนเพิ่มรุ่นใหม่ (ใช้ตอนสร้างเท่านั้น ไม่ใช่ field ของฐานข้อมูล)
+    initial_units = serializers.IntegerField(
+        write_only=True, required=False, default=0, min_value=0, max_value=200,
+        error_messages={"max_value": "เพิ่มได้ครั้งละไม่เกิน 200 เครื่อง", "min_value": "จำนวนต้องไม่ติดลบ"},
+    )
+
     class Meta:
         model = Equipment
-        fields = ["id", "category", "name", "description", "image", "max_borrow_days", "is_active"]
+        fields = ["id", "category", "name", "description", "image", "max_borrow_days", "is_active", "initial_units"]
 
     def validate_image(self, image):
         if image and image.size > MAX_IMAGE_BYTES:
             raise serializers.ValidationError("รูปภาพต้องมีขนาดไม่เกิน 5 MB")
         return image
+
+    def create(self, validated_data):
+        count = validated_data.pop("initial_units", 0)
+        with transaction.atomic():
+            equipment = super().create(validated_data)
+            # สร้างหมายเลขเครื่องอัตโนมัติ เช่น EQ012-001, EQ012-002 (ข้ามเลขที่ซ้ำกับของเดิมให้เอง)
+            n = 0
+            created = 0
+            while created < count:
+                n += 1
+                serial = f"EQ{equipment.pk:03d}-{n:03d}"
+                if EquipmentUnit.objects.filter(serial_number=serial).exists():
+                    continue
+                EquipmentUnit.objects.create(equipment=equipment, serial_number=serial)
+                created += 1
+        return equipment
+
+    def update(self, instance, validated_data):
+        validated_data.pop("initial_units", None)  # แก้ไขรุ่นไม่เพิ่มเครื่อง (ใช้ปุ่ม "+ เพิ่มเครื่อง")
+        return super().update(instance, validated_data)
 
     def validate_max_borrow_days(self, value):
         if value < 1 or value > 60:
