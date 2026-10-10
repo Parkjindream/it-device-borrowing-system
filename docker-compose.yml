@@ -21,6 +21,16 @@
 # services ทั้งหมดอยู่ในเครือข่ายเดียวกัน (docker network) เรียกหากันด้วยชื่อ service
 # (backend เรียก db ว่า "db", frontend เรียก backend ว่า "backend" — ตั้งไว้ใน nginx.conf แล้ว)
 
+# backend image ทุกตัวเริ่มผ่านคำสั่งนี้: ตัด \r ออกจาก docker-entrypoint.sh ก่อนรันทุกครั้ง
+# กันพังบน Windows ที่ git checkout ไฟล์เป็น CRLF ("exec ./docker-entrypoint.sh: no such file or directory")
+# ใช้ได้แม้ image เก่าที่ build ไว้ก่อนแก้ — หมายเหตุ: ตั้ง entrypoint ที่นี่แล้ว CMD ใน Dockerfile จะไม่ถูกใช้
+# จึงต้องใส่ command ให้ทุก service เอง
+x-backend-entrypoint: &backend-entrypoint
+  - sh
+  - -c
+  - tr -d '\r' < /app/docker-entrypoint.sh > /tmp/docker-entrypoint.sh && exec sh /tmp/docker-entrypoint.sh "$$@"
+  - docker-entrypoint
+
 services:
   db:
     image: postgres:16-alpine
@@ -53,6 +63,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    entrypoint: *backend-entrypoint
     command: ["migrate"]
 
   backend:
@@ -73,6 +84,8 @@ services:
       - static_data:/app/staticfiles
     expose:
       - "8000"
+    entrypoint: *backend-entrypoint
+    command: ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60"]
 
   # งานอัตโนมัติ (no-show, แจ้งเตือนอีเมล, ปลดพักสิทธิ์) — แยก container ต่างหาก
   # รันคนละโปรเซสจากเว็บ กันงานพื้นหลังไปแย่ง worker ที่ใช้ตอบ request หน้าเว็บ
@@ -88,6 +101,7 @@ services:
         condition: service_completed_successfully
     volumes:
       - media_data:/app/media
+    entrypoint: *backend-entrypoint
     command: ["python", "manage.py", "run_scheduler"]
 
   # [ปิดไว้ก่อน — เปิดใช้: ลบ # หน้าบรรทัดของ service นี้]
