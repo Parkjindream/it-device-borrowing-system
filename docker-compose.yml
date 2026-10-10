@@ -14,7 +14,7 @@
 # ไม่ต้องเปิดพอร์ต/ทำ port forward ที่ router และไม่ต้องทำใบรับรอง https เอง
 #
 # เครื่องมือฐานข้อมูล (เปิดเฉพาะในเครื่องเซิร์ฟเวอร์ — จากเครื่องอื่นใช้ ssh -L):
-#   pgAdmin      http://localhost:5050   (PGADMIN_PORT)
+#   pgAdmin      ปิดไว้ก่อน (เปิดได้ที่ service pgadmin ด้านล่าง)
 #   PostgreSQL   localhost:5433          (DB_EXPOSE_PORT) สำหรับ psql/DBeaver
 #   สำรองข้อมูล   ./backups ทุกวัน         (วิธีกู้คืนดูใน db/backup.sh)
 #
@@ -108,25 +108,29 @@ services:
     volumes:
       - ./backups:/backups
       - ./db/backup.sh:/backup.sh:ro
-    entrypoint: ["sh", "/backup.sh"]
+    # ตัด \r ก่อนรัน เผื่อไฟล์ถูก checkout บน Windows เป็น CRLF (mount มาจากเครื่องตรง ๆ แก้ใน image ไม่ได้)
+    entrypoint: ["sh", "-c", "tr -d '\\r' < /backup.sh > /tmp/backup.sh && exec sh /tmp/backup.sh"]
 
-  # หน้าเว็บจัดการฐานข้อมูล — มีเซิร์ฟเวอร์ "it-lending" ตั้งไว้ให้แล้ว ใส่แค่รหัสผ่าน DB_PASSWORD ตอนเปิดครั้งแรก
-  pgadmin:
-    image: dpage/pgadmin4:9.18
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?กรุณาตั้งค่า PGADMIN_PASSWORD ในไฟล์ .env}
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    configs:
-      - source: pgadmin_servers
-        target: /pgadmin4/servers.json
+  # [ปิดไว้ก่อน — เปิดใช้: ลบ # หน้าบรรทัดของ service นี้ + "configs:" และ "pgadmin_data:" ท้ายไฟล์
+  #  แล้วใส่ PGADMIN_EMAIL / PGADMIN_PASSWORD ใน .env]
+  # หน้าเว็บจัดการฐานข้อมูล http://localhost:5050 — มีเซิร์ฟเวอร์ "it-lending" ตั้งไว้ให้แล้ว
+  # ใส่แค่รหัสผ่าน DB_PASSWORD ตอนเปิดครั้งแรก
+  # pgadmin:
+  #   image: dpage/pgadmin4:9.18
+  #   restart: unless-stopped
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?กรุณาตั้งค่า PGADMIN_PASSWORD ในไฟล์ .env}
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   ports:
+  #     - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
+  #   volumes:
+  #     - pgadmin_data:/var/lib/pgadmin
+  #   configs:
+  #     - source: pgadmin_servers
+  #       target: /pgadmin4/servers.json
 
   frontend:
     build: ./frontend
@@ -152,25 +156,26 @@ services:
     depends_on:
       - frontend
 
-configs:
-  pgadmin_servers:
-    content: |
-      {
-        "Servers": {
-          "1": {
-            "Name": "it-lending",
-            "Group": "Servers",
-            "Host": "db",
-            "Port": 5432,
-            "MaintenanceDB": "${DB_NAME:-it_lending_db}",
-            "Username": "${DB_USER:-postgres}",
-            "SSLMode": "prefer"
-          }
-        }
-      }
+# รายชื่อเซิร์ฟเวอร์ที่ pgAdmin โหลดให้อัตโนมัติ (ใช้คู่กับ service pgadmin ที่ปิดไว้ด้านบน)
+# configs:
+#   pgadmin_servers:
+#     content: |
+#       {
+#         "Servers": {
+#           "1": {
+#             "Name": "it-lending",
+#             "Group": "Servers",
+#             "Host": "db",
+#             "Port": 5432,
+#             "MaintenanceDB": "${DB_NAME:-it_lending_db}",
+#             "Username": "${DB_USER:-postgres}",
+#             "SSLMode": "prefer"
+#           }
+#         }
+#       }
 
 volumes:
   pgdata:
   media_data:
   static_data:
-  pgadmin_data:
+  # pgadmin_data:

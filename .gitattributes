@@ -1,0 +1,3 @@
+# สคริปต์ shell ต้องเป็น LF เสมอ แม้ checkout บน Windows (core.autocrlf=true)
+# ไม่งั้น container Linux อ่านเป็น "#!/bin/sh\r" แล้วรันไม่ได้ (no such file or directory / illegal option)
+*.sh text eol=lf

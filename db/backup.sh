@@ -21,7 +21,8 @@ backup() {
     if pg_dump --format=custom --file="$BACKUP_DIR/.$name.part"; then
         mv "$BACKUP_DIR/.$name.part" "$BACKUP_DIR/$name"
         # ให้เจ้าของไฟล์ตรงกับโฟลเดอร์ backups บนเครื่อง (ไม่งั้นเป็น root ต้อง sudo ถึงจะลบ/ย้ายได้)
-        chown "$(stat -c %u:%g "$BACKUP_DIR")" "$BACKUP_DIR/$name"
+        # (บน Windows/Docker Desktop บางทีเปลี่ยนเจ้าของไม่ได้ ไม่เป็นไร ไม่ต้องหยุดสำรอง)
+        chown "$(stat -c %u:%g "$BACKUP_DIR")" "$BACKUP_DIR/$name" 2>/dev/null || true
         echo "$(date '+%F %T') สำรองสำเร็จ: $name ($(du -h "$BACKUP_DIR/$name" | cut -f1))"
     else
         rm -f "$BACKUP_DIR/.$name.part"
