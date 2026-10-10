@@ -325,8 +325,17 @@ async function openEquipmentModal(eq = null) {
   form.reset();
   resetEquipmentImageDropzone();
 
-  const unitsWrap = document.getElementById("initial-units-wrap");
-  if (unitsWrap) unitsWrap.classList.toggle("hidden", Boolean(eq)); // ช่องจำนวนเครื่องใช้ตอนเพิ่มรุ่นใหม่เท่านั้น
+  // ช่องจำนวนเครื่อง: ตอนเพิ่มใหม่ = จำนวนที่จะสร้าง / ตอนแก้ไข = จำนวนเครื่อง "ทั้งหมด" (เพิ่ม-ลดแล้วกดบันทึก)
+  const unitsInput = document.getElementById("initial-units-input");
+  const unitsLabel = document.getElementById("units-label");
+  const unitsHint = document.getElementById("units-hint");
+  if (unitsInput) unitsInput.value = eq ? eq.total_units : 1;
+  if (unitsLabel) unitsLabel.textContent = eq ? "จำนวนเครื่องทั้งหมด" : "จำนวนเครื่องที่มีตอนนี้";
+  if (unitsHint) {
+    unitsHint.textContent = eq
+      ? "เพิ่ม/ลดตัวเลขแล้วกดบันทึก ระบบจะเพิ่มหรือลบเครื่องที่ว่างให้ตรงจำนวน (เครื่องที่กำลังจอง/ยืมจะไม่ถูกลบ)"
+      : "ระบบจะสร้างหมายเลขเครื่องให้อัตโนมัติ (ใส่ 0 ถ้าจะเพิ่มทีหลัง)";
+  }
 
   const title = document.getElementById("equipment-modal-title");
   if (eq) {
@@ -354,6 +363,17 @@ function setupEquipmentModal() {
   document.getElementById("new-equipment-btn").addEventListener("click", () => openEquipmentModal());
   document.getElementById("equipment-modal-cancel").addEventListener("click", () => modal.classList.add("hidden"));
 
+  // ปุ่ม − / + ข้างช่องจำนวนเครื่อง
+  const stepUnits = (delta) => {
+    const input = document.getElementById("initial-units-input");
+    const next = Math.max(0, Math.min(500, (parseInt(input.value, 10) || 0) + delta));
+    input.value = next;
+  };
+  const minusBtn = document.getElementById("units-minus-btn");
+  const plusBtn = document.getElementById("units-plus-btn");
+  if (minusBtn) minusBtn.addEventListener("click", () => stepUnits(-1));
+  if (plusBtn) plusBtn.addEventListener("click", () => stepUnits(1));
+
   document.getElementById("equipment-image-input").addEventListener("change", (event) => {
     const file = event.target.files[0];
     if (!file) { resetEquipmentImageDropzone(); return; }
@@ -376,10 +396,13 @@ function setupEquipmentModal() {
     formData.set("category", form.category.value);
     formData.set("name", form.name.value);
     formData.set("max_borrow_days", form.max_borrow_days.value);
-    if (!editingEquipmentId) {
+    const unitsInput = document.getElementById("initial-units-input");
+    const unitsValue = unitsInput && unitsInput.value !== "" ? unitsInput.value : null;
+    if (editingEquipmentId) {
+      if (unitsValue !== null) formData.set("target_units", unitsValue);
+    } else {
       formData.set("is_active", "true");
-      const unitsInput = document.getElementById("initial-units-input");
-      formData.set("initial_units", unitsInput && unitsInput.value !== "" ? unitsInput.value : "0");
+      formData.set("initial_units", unitsValue !== null ? unitsValue : "0");
     }
     const imageFile = document.getElementById("equipment-image-input").files[0];
     if (imageFile) formData.set("image", imageFile);
