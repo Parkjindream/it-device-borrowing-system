@@ -56,8 +56,8 @@ def create_booking(student, equipment_id, start_date, end_date):
     today = timezone.localdate()
     if start_date < today:
         raise BookingError("วันเริ่มยืมต้องไม่ใช่วันที่ผ่านมาแล้ว")
-    if end_date <= start_date:
-        raise BookingError("วันครบกำหนดคืนต้องอยู่หลังวันเริ่มยืม")
+    if end_date < start_date:
+        raise BookingError("วันครบกำหนดคืนต้องไม่ก่อนวันเริ่มยืม")
     max_advance = settings.DEFAULT_MAX_ADVANCE_DAYS
     if (start_date - today).days > max_advance:
         raise BookingError(f"จองล่วงหน้าได้ไม่เกิน {max_advance} วัน")
@@ -73,7 +73,8 @@ def create_booking(student, equipment_id, start_date, end_date):
         except Equipment.DoesNotExist:
             raise BookingError("ไม่พบอุปกรณ์นี้ หรือถูกปิดใช้งานแล้ว")
 
-        if (end_date - start_date).days > equipment.max_borrow_days:
+        # นับรวมทั้งวันเริ่มและวันคืน เช่น ยืมได้สูงสุด 3 วัน: เริ่มวันที่ 10 คืนได้ไม่เกินวันที่ 12
+        if (end_date - start_date).days + 1 > equipment.max_borrow_days:
             raise BookingError(f"อุปกรณ์นี้ยืมได้สูงสุด {equipment.max_borrow_days} วันต่อครั้ง")
 
         # กติกา: นักศึกษา 1 คน มีรายการที่ยังไม่จบได้แค่ 1 รายการ (รวมทุกรุ่นอุปกรณ์)
