@@ -7,8 +7,12 @@ no-show, แจ้งเตือนอีเมล, สิทธิ์การ
 """
 from datetime import datetime, time as dtime, timedelta
 
+import os
+from unittest import mock
+
 from django.core import mail
-from django.test import TestCase
+from django.core.management import call_command
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -97,7 +101,7 @@ class BookingFlowTests(BaseTestCase):
 
     def test_cancel_returns_unit_to_stock(self):
         client = self.client_for(self.student)
-        resp = client.post("/api/bookings/", {
+        resp = client.post("/bookings/", {
             "equipment_id": self.equipment.id,
             "start_date": str(self.today), "end_date": str(self.today + timedelta(days=2)),
         }, format="json")
@@ -105,7 +109,7 @@ class BookingFlowTests(BaseTestCase):
         booking_id = resp.data["id"]
         self.assertEqual(self.equipment.available_units, 1)
 
-        resp = client.post(f"/api/bookings/{booking_id}/cancel/")
+        resp = client.post(f"/bookings/{booking_id}/cancel/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(self.equipment.available_units, 2)
         self.assertEqual(Booking.objects.get(pk=booking_id).status, Booking.Status.CANCELLED)
@@ -184,7 +188,7 @@ class PenaltyTests(BaseTestCase):
         self.student.is_suspended = True
         self.student.suspended_until = self.today + timedelta(days=5)
         self.student.save()
-        resp = self.client_for(self.staff).post(f"/api/staff/students/{self.student.id}/unsuspend/")
+        resp = self.client_for(self.staff).post(f"/staff/students/{self.student.id}/unsuspend/")
         self.assertEqual(resp.status_code, 200)
         self.student.refresh_from_db()
         self.assertTrue(self.student.can_make_new_booking())
@@ -253,23 +257,23 @@ class JobTests(BaseTestCase):
 
 class ApiAndPermissionTests(BaseTestCase):
     def test_login_returns_token_and_user(self):
-        resp = APIClient().post("/api/auth/login/", {"email": "s1@example.ac.th", "password": "Pass!word123"}, format="json")
+        resp = APIClient().post("/auth/login/", {"email": "s1@example.ac.th", "password": "Pass!word123"}, format="json")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("token", resp.data)
         self.assertEqual(resp.data["user"]["role"], "student")
 
     def test_login_wrong_password(self):
-        resp = APIClient().post("/api/auth/login/", {"email": "s1@example.ac.th", "password": "wrong"}, format="json")
+        resp = APIClient().post("/auth/login/", {"email": "s1@example.ac.th", "password": "wrong"}, format="json")
         self.assertEqual(resp.status_code, 400)
 
     def test_student_cannot_use_staff_endpoints(self):
         client = self.client_for(self.student)
-        for url in ["/api/staff/bookings/", "/api/staff/dashboard-summary/", "/api/staff/students/",
-                    "/api/staff/penalty-settings/", "/api/staff/notifications/"]:
+        for url in ["/staff/bookings/", "/staff/dashboard-summary/", "/staff/students/",
+                    "/staff/penalty-settings/", "/staff/notifications/"]:
             self.assertEqual(client.get(url).status_code, 403, url)
 
     def test_staff_cannot_book(self):
-        resp = self.client_for(self.staff).post("/api/bookings/", {
+        resp = self.client_for(self.staff).post("/bookings/", {
             "equipment_id": self.equipment.id,
             "start_date": str(self.today), "end_date": str(self.today + timedelta(days=1)),
         }, format="json")
@@ -277,20 +281,20 @@ class ApiAndPermissionTests(BaseTestCase):
 
     def test_anonymous_blocked_but_public_equipment_open(self):
         anon = APIClient()
-        self.assertEqual(anon.get("/api/equipment/").status_code, 401)
-        resp = anon.get("/api/public/equipment/")
+        self.assertEqual(anon.get("/equipment/").status_code, 401)
+        resp = anon.get("/public/equipment/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data[0]["available_units"], 2)
 
     def test_qr_lookup_does_not_change_status(self):
         booking = self.book()
         client = self.client_for(self.staff)
-        resp = client.get(f"/api/staff/bookings/lookup/?code={booking.booking_code.lower()}")
+        resp = client.get(f"/staff/bookings/lookup/?code={booking.booking_code.lower()}")
         self.assertEqual(resp.status_code, 200)
         booking.refresh_from_db()
         self.assertEqual(booking.status, Booking.Status.AWAITING_PICKUP)  # สแกนแล้วยังไม่เปลี่ยนสถานะ
 
-        resp = client.post(f"/api/staff/bookings/{booking.id}/confirm-pickup/", {"condition_note": "ok"}, format="json")
+        resp = client.post(f"/staff/bookings/{booking.id}/confirm-pickup/", {"condition_note": "ok"}, format="json")
         self.assertEqual(resp.status_code, 200)
         booking.refresh_from_db()
         self.assertEqual(booking.status, Booking.Status.BORROWED)
@@ -298,32 +302,32 @@ class ApiAndPermissionTests(BaseTestCase):
 
     def test_cannot_confirm_return_before_pickup(self):
         booking = self.book()
-        resp = self.client_for(self.staff).post(f"/api/staff/bookings/{booking.id}/confirm-return/", {}, format="json")
+        resp = self.client_for(self.staff).post(f"/staff/bookings/{booking.id}/confirm-return/", {}, format="json")
         self.assertEqual(resp.status_code, 400)
 
     def test_student_cannot_cancel_others_booking(self):
         booking = self.book(self.student)
-        resp = self.client_for(self.student2).post(f"/api/bookings/{booking.id}/cancel/")
+        resp = self.client_for(self.student2).post(f"/bookings/{booking.id}/cancel/")
         self.assertEqual(resp.status_code, 404)
 
     def test_profile_update_persists(self):
         client = self.client_for(self.student)
-        resp = client.patch("/api/auth/me/", {"first_name": "สมศักดิ์", "last_name": "รักดี"}, format="json")
+        resp = client.patch("/auth/me/", {"first_name": "สมศักดิ์", "last_name": "รักดี"}, format="json")
         self.assertEqual(resp.status_code, 200)
         self.student.refresh_from_db()
         self.assertEqual(self.student.first_name, "สมศักดิ์")
         self.assertEqual(self.student.last_name, "รักดี")
         # แก้ email/role ผ่านโปรไฟล์ไม่ได้
-        client.patch("/api/auth/me/", {"role": "staff", "email": "x@x.com"}, format="json")
+        client.patch("/auth/me/", {"role": "staff", "email": "x@x.com"}, format="json")
         self.student.refresh_from_db()
         self.assertEqual(self.student.role, "student")
         self.assertEqual(self.student.email, "s1@example.ac.th")
 
     def test_change_password(self):
         client = self.client_for(self.student)
-        bad = client.post("/api/auth/change-password/", {"old_password": "nope", "new_password": "NewPass!word456"}, format="json")
+        bad = client.post("/auth/change-password/", {"old_password": "nope", "new_password": "NewPass!word456"}, format="json")
         self.assertEqual(bad.status_code, 400)
-        ok = client.post("/api/auth/change-password/", {"old_password": "Pass!word123", "new_password": "NewPass!word456"}, format="json")
+        ok = client.post("/auth/change-password/", {"old_password": "Pass!word123", "new_password": "NewPass!word456"}, format="json")
         self.assertEqual(ok.status_code, 200)
         self.student.refresh_from_db()
         self.assertTrue(self.student.check_password("NewPass!word456"))
@@ -332,48 +336,74 @@ class ApiAndPermissionTests(BaseTestCase):
         admin = User.objects.create_superuser(username="root", email="root@example.ac.th", password="Pass!word123")
         self.assertEqual(admin.role, "staff")
 
+    def test_ensure_superuser_creates_once_and_never_overwrites(self):
+        env = {"DJANGO_SUPERUSER_USERNAME": "admin", "DJANGO_SUPERUSER_EMAIL": "admin@example.ac.th",
+               "DJANGO_SUPERUSER_PASSWORD": "Pass!word123"}
+        with mock.patch.dict(os.environ, env):
+            call_command("ensure_superuser", stdout=mock.MagicMock())
+            admin = User.objects.get(username="admin")
+            self.assertTrue(admin.is_superuser)
+            self.assertEqual(admin.role, "staff")
+            admin.set_password("Changed!word456")
+            admin.save()
+            call_command("ensure_superuser", stdout=mock.MagicMock())
+        admin.refresh_from_db()
+        self.assertTrue(admin.check_password("Changed!word456"))
+
+    def test_ensure_superuser_skips_without_env(self):
+        with mock.patch.dict(os.environ, {"DJANGO_SUPERUSER_USERNAME": "", "DJANGO_SUPERUSER_PASSWORD": ""}):
+            call_command("ensure_superuser", stdout=mock.MagicMock())
+        self.assertFalse(User.objects.filter(is_superuser=True).exists())
+
+    @override_settings(FRONTEND_RESET_PASSWORD_URL="", ALLOWED_HOSTS=[".trycloudflare.com"])
+    def test_reset_link_uses_request_host_when_url_not_set(self):
+        resp = APIClient().post("/auth/password-reset/", {"email": self.student.email}, format="json",
+                                HTTP_HOST="abc-def.trycloudflare.com", HTTP_X_FORWARDED_PROTO="https")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("https://abc-def.trycloudflare.com/reset-password.html?uid=", mail.outbox[-1].body)
+
     def test_unit_status_guard(self):
         booking = self.book()
         client = self.client_for(self.staff)
-        resp = client.patch(f"/api/staff/units/{booking.unit_id}/", {"status": "disabled"}, format="json")
+        resp = client.patch(f"/staff/units/{booking.unit_id}/", {"status": "disabled"}, format="json")
         self.assertEqual(resp.status_code, 400)  # กำลังถูกจองอยู่ แก้สถานะไม่ได้
         free_unit = EquipmentUnit.objects.exclude(pk=booking.unit_id).first()
-        resp = client.patch(f"/api/staff/units/{free_unit.id}/", {"status": "disabled"}, format="json")
+        resp = client.patch(f"/staff/units/{free_unit.id}/", {"status": "disabled"}, format="json")
         self.assertEqual(resp.status_code, 200)
-        resp = client.patch(f"/api/staff/units/{free_unit.id}/", {"status": "borrowed"}, format="json")
+        resp = client.patch(f"/staff/units/{free_unit.id}/", {"status": "borrowed"}, format="json")
         self.assertEqual(resp.status_code, 400)
 
     def test_staff_add_unit_and_category_and_penalty_settings(self):
         client = self.client_for(self.staff)
-        resp = client.post(f"/api/staff/equipment/{self.equipment.id}/units/", {"serial_number": "NB-003"}, format="json")
+        resp = client.post(f"/staff/equipment/{self.equipment.id}/units/", {"serial_number": "NB-003"}, format="json")
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(self.equipment.available_units, 3)
-        dup = client.post(f"/api/staff/equipment/{self.equipment.id}/units/", {"serial_number": "NB-003"}, format="json")
+        dup = client.post(f"/staff/equipment/{self.equipment.id}/units/", {"serial_number": "NB-003"}, format="json")
         self.assertEqual(dup.status_code, 400)
 
-        resp = client.post("/api/staff/equipment-categories/", {"name": "บอร์ด"}, format="json")
+        resp = client.post("/staff/equipment-categories/", {"name": "บอร์ด"}, format="json")
         self.assertEqual(resp.status_code, 201)
-        resp = client.post("/api/staff/equipment/", {
+        resp = client.post("/staff/equipment/", {
             "category": resp.data["id"], "name": "ESP32", "max_borrow_days": 7, "is_active": True,
         }, format="json")
         self.assertEqual(resp.status_code, 201)
 
-        resp = client.patch("/api/staff/penalty-settings/", {"suspension_days": 5, "overdue_days_threshold": 2}, format="json")
+        resp = client.patch("/staff/penalty-settings/", {"suspension_days": 5, "overdue_days_threshold": 2}, format="json")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(PenaltySettings.get_solo().suspension_days, 5)
-        bad = client.patch("/api/staff/penalty-settings/", {"suspension_days": 0}, format="json")
+        bad = client.patch("/staff/penalty-settings/", {"suspension_days": 0}, format="json")
         self.assertEqual(bad.status_code, 400)
 
     def test_staff_create_and_import_students(self):
         client = self.client_for(self.staff)
-        resp = client.post("/api/staff/students/", {
+        resp = client.post("/staff/students/", {
             "email": "new@example.ac.th", "first_name": "ใหม่", "last_name": "ทดสอบ", "student_id": "6509999",
         }, format="json")
         self.assertEqual(resp.status_code, 201)
         new_user = User.objects.get(email="new@example.ac.th")
         self.assertFalse(new_user.has_usable_password())  # ต้องตั้งรหัสผ่านเองผ่าน "ลืมรหัสผ่าน"
 
-        resp = client.post("/api/staff/students/import/", {"students": [
+        resp = client.post("/staff/students/import/", {"students": [
             {"email": "a@example.ac.th", "first_name": "เอ", "last_name": "หนึ่ง", "student_id": "7001"},
             {"email": "new@example.ac.th", "first_name": "ซ้ำ", "last_name": "", "student_id": "7002"},
             {"email": "not-an-email", "first_name": "ผิด", "last_name": "", "student_id": ""},
@@ -386,7 +416,7 @@ class ApiAndPermissionTests(BaseTestCase):
         booking = self.book(self.student)
         confirm_pickup(booking, self.staff)
         Booking.objects.filter(pk=booking.pk).update(requested_end_date=self.today - timedelta(days=1))
-        resp = self.client_for(self.staff).get("/api/staff/dashboard-summary/")
+        resp = self.client_for(self.staff).get("/staff/dashboard-summary/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data["overdue_count"], 1)  # นับรวมแม้ job ยังไม่ทันรัน
         self.assertEqual(resp.data["borrowed_count"], 0)

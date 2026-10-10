@@ -18,6 +18,10 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv(
 # เช่น https://borrow.college.ac.th  (คั่นด้วย , ได้หลายค่า)
 CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="", cast=Csv())
 
+# backend ถูกเปิดสู่ภายนอกใต้ /api เท่านั้น (nginx/dev_server.py ตัด /api ออกก่อนส่งมา)
+# บอก Django ไว้ ลิงก์ที่สร้างเอง (หน้า admin, redirect, ลิงก์แบ่งหน้า) จะได้ขึ้นต้นด้วย /api ถูกต้อง
+FORCE_SCRIPT_NAME = config("FORCE_SCRIPT_NAME", default="/api") or None
+
 # ใช้เมื่อรันหลัง nginx/reverse proxy ที่ทำ https ให้ (Docker ตั้งเป็น True ให้อัตโนมัติผ่าน .env)
 if config("USE_X_FORWARDED_PROTO", default=False, cast=bool):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -103,7 +107,8 @@ TIME_ZONE = "Asia/Bangkok"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+# ใช้ path เต็ม (ขึ้นต้นด้วย /) ไม่งั้น Django จะเติม /api ข้างหน้าให้ตาม FORCE_SCRIPT_NAME
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"   # collectstatic เก็บที่นี่ (Docker ให้ nginx เสิร์ฟ)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"          # รูปอุปกรณ์ที่เจ้าหน้าที่อัปโหลด
@@ -153,9 +158,11 @@ EMAIL_TIMEOUT = 20
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="ศูนย์ยืม-คืนอุปกรณ์ไอที <no-reply@it-lending.local>")
 
 # --- URL หน้า frontend สำหรับฝัง link ในอีเมล (ตั้งรหัสผ่านใหม่) ---
-FRONTEND_URL = config("FRONTEND_URL", default="http://127.0.0.1:5500")
+# เว้นว่างไว้ = ใช้โดเมนเดียวกับที่ผู้ใช้กดขอลิงก์เข้ามา (เหมาะกับ trycloudflare ที่ URL สุ่มใหม่ทุกครั้ง
+# และ dev_server.py ที่ 127.0.0.1:5500) — ตั้งค่าเมื่อมีโดเมนจริงที่แน่นอนแล้ว
+FRONTEND_URL = config("FRONTEND_URL", default="").rstrip("/")
 FRONTEND_RESET_PASSWORD_URL = config(
-    "FRONTEND_RESET_PASSWORD_URL", default=f"{FRONTEND_URL}/reset-password.html"
+    "FRONTEND_RESET_PASSWORD_URL", default=f"{FRONTEND_URL}/reset-password.html" if FRONTEND_URL else ""
 )
 
 # --- ค่าตั้งต้นของระบบ (ค่าจริงที่เจ้าหน้าที่ปรับได้อยู่ในตาราง PenaltySettings) ---

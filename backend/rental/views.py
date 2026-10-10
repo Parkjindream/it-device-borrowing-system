@@ -169,7 +169,9 @@ class PasswordResetRequestView(APIView):
         if user is not None:
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = token_generator.make_token(user)
-            reset_link = f"{settings.FRONTEND_RESET_PASSWORD_URL}?uid={uid}&token={token}"
+            # ไม่ได้ตั้ง URL ไว้ -> ใช้โดเมนที่ผู้ใช้เข้ามา (Host ผ่าน ALLOWED_HOSTS แล้ว และคนนอกเข้าได้ทาง tunnel ทางเดียว)
+            reset_page = settings.FRONTEND_RESET_PASSWORD_URL or request.build_absolute_uri("/reset-password.html")
+            reset_link = f"{reset_page}?uid={uid}&token={token}"
             try:
                 send_mail(
                     subject="ตั้งรหัสผ่านใหม่ - ศูนย์ยืม-คืนอุปกรณ์ไอที",

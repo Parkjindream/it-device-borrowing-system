@@ -30,13 +30,20 @@ print("เชื่อมต่อฐานข้อมูลไม่สำเ�
 sys.exit(1)
 PYEOF
 
-echo "รัน migrate..."
-python manage.py migrate --noinput
-
-# collectstatic จำเป็นเฉพาะ container ที่เสิร์ฟเว็บ (gunicorn) container scheduler ไม่ต้องเสียเวลาทำ
-if [ "$1" = "gunicorn" ]; then
-    echo "รวบรวม static files..."
-    python manage.py collectstatic --noinput
-fi
+case "$1" in
+    # container "migrate" ใน docker-compose: เตรียมฐานข้อมูลครั้งเดียวแล้วจบ
+    # backend/scheduler รอให้ตัวนี้เสร็จก่อนค่อยเริ่ม จะได้ไม่ migrate ชนกันตอนฐานข้อมูลยังว่าง
+    migrate)
+        echo "รัน migrate..."
+        python manage.py migrate --noinput
+        python manage.py ensure_superuser
+        exit 0
+        ;;
+    # collectstatic จำเป็นเฉพาะ container ที่เสิร์ฟเว็บ (gunicorn) container scheduler ไม่ต้องเสียเวลาทำ
+    gunicorn)
+        echo "รวบรวม static files..."
+        python manage.py collectstatic --noinput
+        ;;
+esac
 
 exec "$@"

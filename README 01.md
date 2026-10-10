@@ -149,16 +149,41 @@ python manage.py send_test_email you@example.com
 ต้องมี Docker และ Docker Compose ติดตั้งในเครื่อง/เซิร์ฟเวอร์ก่อน
 
 ```bash
-cp .env.docker.example .env       # แก้ค่าทุกอย่างในไฟล์ .env ให้ครบ (โดยเฉพาะรหัสผ่าน, DJANGO_SECRET_KEY, โดเมนจริง, อีเมล SMTP)
-docker compose up -d --build
-docker compose exec backend python manage.py createsuperuser
+cp .env.docker.example .env       # แก้ค่าในไฟล์ .env ให้ครบ (รหัสผ่านทุกตัว, DJANGO_SECRET_KEY, อีเมล SMTP)
+docker compose up -d --build      # สร้างตาราง + บัญชีแอดมินจาก DJANGO_SUPERUSER_* ให้อัตโนมัติ
 docker compose exec backend python manage.py seed_demo_data   # ถ้าต้องการข้อมูลตัวอย่าง (ข้ามได้ถ้าจะกรอกข้อมูลจริงเอง)
+
+# ดู URL สาธารณะ (Cloudflare Quick Tunnel ไม่ต้องมีบัญชี/token — URL สุ่มใหม่ทุกครั้งที่ cloudflared เริ่มใหม่)
+docker compose logs cloudflared | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com'
 ```
 
-เปิดเบราว์เซอร์ไปที่ `http://<เซิร์ฟเวอร์ของคุณ>/` (พอร์ต 80 ตามค่า `HTTP_PORT` ใน `.env`)
+เปิด URL ที่ได้ในเบราว์เซอร์ (หน้า admin อยู่ที่ `/api/admin/`)
+— ในเครื่องเซิร์ฟเวอร์เองทดสอบได้ที่ `http://localhost/` (พอร์ตตาม `HTTP_PORT` ใน `.env`)
 
-**สถาปัตยกรรมตอน deploy:** `nginx (frontend container)` เสิร์ฟไฟล์เว็บ + proxy `/api/`, `/admin/`,
-`/static/`, `/media/` ไปยัง `backend container` (Django+gunicorn) ในเครือข่ายเดียวกัน ทำให้ frontend
+สิ่งที่ `docker compose up` เปิดให้ทั้งหมด:
+
+| service | หน้าที่ |
+|---|---|
+| `db` | PostgreSQL 16 (ข้อมูลอยู่ใน volume `pgdata`) ต่อจากเครื่องเซิร์ฟเวอร์ได้ที่ `localhost:5433` |
+| `migrate` | รัน migrate + สร้างแอดมินครั้งเดียวแล้วจบ (backend/scheduler รอตัวนี้ก่อน) |
+| `backend` / `scheduler` | Django API / งานอัตโนมัติ |
+| `frontend` | nginx ทางเข้าเดียวของเว็บ |
+| `cloudflared` | Cloudflare Quick Tunnel ให้คนภายนอกเข้าผ่าน https |
+| `db-backup` | `pg_dump` ทุกวันตี 2 ลง `./backups` เก็บ 14 วัน (ปรับที่ `BACKUP_HOUR`/`BACKUP_KEEP_DAYS`) |
+| `pgadmin` | จัดการฐานข้อมูลผ่านเว็บที่ `http://localhost:5050` (มีเซิร์ฟเวอร์ `it-lending` ตั้งไว้ให้แล้ว) |
+
+`db`, `pgadmin`, `frontend` ผูกพอร์ตไว้แค่ `127.0.0.1` — จากเครื่องอื่นให้ใช้ `ssh -L 5050:localhost:5050 <เซิร์ฟเวอร์>`
+
+กู้คืนฐานข้อมูลจากไฟล์สำรอง:
+```bash
+docker compose stop backend scheduler
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' < backups/<ไฟล์>.dump
+docker compose start backend scheduler
+```
+
+**สถาปัตยกรรมตอน deploy:** `Cloudflare Tunnel (cloudflared)` → `nginx (frontend container)` ซึ่งเป็นทางเข้า
+เดียว เสิร์ฟไฟล์เว็บ + `/static/`, `/media/` เอง และ proxy `/api/*` ไปยัง `backend container`
+(Django+gunicorn) โดยตัด `/api` ออก (`/api/auth/login/` → backend `/auth/login/`) ทำให้ frontend
 กับ backend อยู่ origin เดียวกันจากมุมมองเบราว์เซอร์ — **ไม่มีปัญหา CORS เลยตอน production**
 (ต่างจากตอนพัฒนาที่รันคนละพอร์ตจึงต้องพึ่ง `CORS_ALLOWED_ORIGINS`) ส่วน container `scheduler` รันงาน
 อัตโนมัติ (no-show, แจ้งเตือน, ปลดพักสิทธิ์) แยกจากเว็บ ไม่แย่ง worker กันตอบ request
@@ -175,11 +200,12 @@ docker compose up -d --build        # deploy โค้ดเวอร์ชั�
 **ก่อน deploy จริงกับข้อมูลนักศึกษาจริง ต้องทำเพิ่ม:**
 1. เปลี่ยนรหัสผ่านบัญชีทดสอบทั้งหมด/ไม่รัน `seed_demo_data` กับฐานข้อมูลจริง
 2. ตั้งค่า SMTP จริงใน `.env` (ไม่ใช้ console backend อีกต่อไป)
-3. ตั้ง `DJANGO_SECRET_KEY` ใหม่แบบสุ่ม, `ALLOWED_HOSTS`/`CSRF_TRUSTED_ORIGINS` เป็นโดเมนจริง
-4. ถ้ามี HTTPS ผ่าน reverse proxy ชั้นนอกอีกที ให้ตั้ง `SECURE_COOKIES=True` ด้วยใน `.env`
+3. ตั้ง `DJANGO_SECRET_KEY` ใหม่แบบสุ่ม
+4. เปลี่ยนจาก Quick Tunnel (URL สุ่ม ไม่รับประกัน uptime) เป็น Cloudflare Tunnel แบบมี token ผูกโดเมนจริง
+   (ดูคอมเมนต์ที่ service `cloudflared` ใน `docker-compose.yml`) แล้วตั้ง `ALLOWED_HOSTS`/`CSRF_TRUSTED_ORIGINS`/`FRONTEND_URL` เป็นโดเมนนั้น
 5. นำเข้ารายชื่อนักศึกษาจริงผ่าน `/api/staff/students/import/` (ดูหัวข้อ 6) หรือทีละคนผ่าน `/api/staff/students/`
 6. แทนที่ `frontend/assets/img/logo.png` ด้วยโลโก้จริงของวิทยาลัย (ชื่อไฟล์เดิม ~512×512px พื้นหลังโปร่งใส)
-7. ตั้ง backup ฐานข้อมูล PostgreSQL สม่ำเสมอ (volume `pgdata` เก็บข้อมูลไว้ แต่ควร backup ออกไปที่อื่นด้วย)
+7. คัดลอกไฟล์ใน `./backups` ออกไปเก็บนอกเครื่องเซิร์ฟเวอร์สม่ำเสมอ (`db-backup` สำรองให้ทุกวันแต่อยู่เครื่องเดียวกัน ถ้าดิสก์พังก็หายด้วย)
 
 ## 6) นำเข้ารายชื่อนักศึกษาจริงทีละหลายคน
 
@@ -214,7 +240,7 @@ no-show, การแจ้งเตือนอีเมลทุกจุด (
 - [ ] กด "โปรไฟล์ของฉัน" แก้ชื่อ → บันทึกสำเร็จ → logout แล้ว login ใหม่ → ชื่อยังเป็นชื่อที่แก้ (**ทดสอบว่าบั๊ก logout หายแล้วด้วย** — ต้องไม่เจอ "Cannot GET /login.html")
 - [ ] เปลี่ยนรหัสผ่านในหน้าโปรไฟล์ → logout → login ด้วยรหัสใหม่ได้
 - [ ] Login เจ้าหน้าที่ → ค้นรหัสการจอง → ยืนยันรับของ → เช็คอีเมล "รับของสำเร็จ" ขึ้นใน terminal
-- [ ] แก้วันครบกำหนดของ booking ให้เป็นวันที่ผ่านมาแล้วผ่านหน้า Django admin (`/admin/`) เพื่อจำลองเกินกำหนด
+- [ ] แก้วันครบกำหนดของ booking ให้เป็นวันที่ผ่านมาแล้วผ่านหน้า Django admin (`/api/admin/`) เพื่อจำลองเกินกำหนด
 - [ ] รีเฟรชหน้านักศึกษา/เจ้าหน้าที่ — **ต้องเห็นป้าย "เกินกำหนด" ทันที** แม้ยังไม่รัน `run_scheduler`
 - [ ] รัน `python manage.py run_scheduler --once` → เช็คอีเมล "เกินกำหนด...พักสิทธิ์..." ขึ้นใน terminal → สถานะในฐานข้อมูลเปลี่ยนเป็น overdue จริง
 - [ ] ยืนยันคืนของรายการที่เกินกำหนด → เช็คว่านักศึกษาถูกพักสิทธิ์จริง (ลอง login แล้วเห็นแบนเนอร์พักสิทธิ์) + มีอีเมล "รับคืนสำเร็จ" กับ "พักสิทธิ์" ทั้งคู่
