@@ -224,11 +224,12 @@ class EquipmentWriteSerializer(serializers.ModelSerializer):
         """
         ลดเครื่องลง count เครื่อง — ลบเฉพาะเครื่องที่ 'ว่าง' (หรือปิดใช้งาน) และไม่มีประวัติการยืมผูกอยู่
         เครื่องที่กำลังจอง/ยืมอยู่จะไม่ถูกแตะ ถ้าลบได้ไม่ครบตามที่ขอจะแจ้ง error และไม่เปลี่ยนอะไรเลย
+        (นับ/ลบเฉพาะเครื่องที่ "ว่าง" — เครื่องที่ปิดใช้งานไม่นับในจำนวนทั้งหมดที่หน้าเว็บแสดง)
         """
         candidates = list(
             EquipmentUnit.objects.select_for_update()
-            .filter(equipment=equipment, status__in=[EquipmentUnit.Status.AVAILABLE, EquipmentUnit.Status.DISABLED])
-            .order_by("status", "-id")  # ลบเครื่องว่างก่อน แล้วค่อยเครื่องที่ปิดใช้งาน / ลบตัวที่เพิ่มล่าสุดก่อน
+            .filter(equipment=equipment, status=EquipmentUnit.Status.AVAILABLE)
+            .order_by("-id")  # ลบตัวที่เพิ่มล่าสุดก่อน
         )
         removed = 0
         for unit in candidates:
@@ -260,7 +261,10 @@ class EquipmentWriteSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             equipment = super().update(instance, validated_data)
             if target is not None:
-                current = EquipmentUnit.objects.filter(equipment=equipment).count()
+                # "จำนวนทั้งหมด" ตรงกับที่หน้าเว็บแสดง (ไม่รวมเครื่องที่ปิดใช้งาน)
+                current = EquipmentUnit.objects.filter(equipment=equipment).exclude(
+                    status=EquipmentUnit.Status.DISABLED
+                ).count()
                 if target > current:
                     self._add_units(equipment, target - current)
                 elif target < current:
