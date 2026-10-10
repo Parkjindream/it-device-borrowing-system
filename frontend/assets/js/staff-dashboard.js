@@ -126,7 +126,7 @@ function renderQueueRow(booking) {
       <div class="min-w-0">
         <p class="font-display font-medium text-sm truncate">${booking.equipment_name} <span class="text-[var(--ink)]/40">·</span> ${booking.unit_serial_number}</p>
         <p class="text-xs text-[var(--ink)]/55 mt-0.5">
-          ${booking.student_name || "-"} (${booking.student_id || "-"}) · รหัส ${booking.booking_code}
+          ${escapeHtml(booking.student_name || "-")} (${escapeHtml(booking.student_id || "-")}) · รหัส ${booking.booking_code}
         </p>
         <p class="text-xs text-[var(--ink)]/55 mt-0.5">กำหนดคืน ${formatDate(booking.requested_end_date)}</p>
       </div>
@@ -472,9 +472,9 @@ async function loadStudentList() {
   list.innerHTML = data.map((s) => `
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--line)] px-4 py-3">
       <div>
-        <p class="text-sm font-medium">${s.first_name} ${s.last_name || ""} <span class="text-[var(--ink)]/40">·</span> ${s.email}</p>
+        <p class="text-sm font-medium">${escapeHtml(s.first_name)} ${escapeHtml(s.last_name)} <span class="text-[var(--ink)]/40">·</span> ${escapeHtml(s.email)}</p>
         <p class="text-xs text-[var(--ink)]/55 mt-0.5">
-          รหัสนักศึกษา ${s.student_id || "-"}
+          รหัสนักศึกษา ${escapeHtml(s.student_id || "-")}
           ${s.is_currently_suspended ? `· <span class="text-[#c33c3c]">พักสิทธิ์ถึง ${s.suspended_until ? formatDate(s.suspended_until) : "-"}</span>` : ""}
         </p>
       </div>
@@ -614,8 +614,8 @@ async function loadNotificationList() {
     <div class="surface rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
       <div>
         <p class="text-sm font-medium">${n.trigger_label}${n.booking_code ? ` <span class="text-[var(--ink)]/40">·</span> ${n.booking_code}` : ""}</p>
-        <p class="text-xs text-[var(--ink)]/55 mt-0.5">ถึง ${n.email_to || "-"} · ${formatDateTime(n.sent_at)}</p>
-        ${!n.is_success ? `<p class="text-xs text-[#c33c3c] mt-0.5">ส่งไม่สำเร็จ: ${n.error_message || "ไม่ทราบสาเหตุ"}</p>` : ""}
+        <p class="text-xs text-[var(--ink)]/55 mt-0.5">ถึง ${escapeHtml(n.email_to || "-")} · ${formatDateTime(n.sent_at)}</p>
+        ${!n.is_success ? `<p class="text-xs text-[#c33c3c] mt-0.5">ส่งไม่สำเร็จ: ${escapeHtml(n.error_message || "ไม่ทราบสาเหตุ")}</p>` : ""}
       </div>
       <span class="badge ${n.is_success ? "badge-available" : "badge-overdue"}">${n.is_success ? "ส่งสำเร็จ" : "ส่งไม่สำเร็จ"}</span>
     </div>

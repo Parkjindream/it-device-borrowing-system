@@ -19,7 +19,13 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import Booking, Equipment, EquipmentUnit, PenaltySettings
-from .notifications import notify_booking_confirmed, notify_pickup_success, notify_return_success, notify_suspended
+from .notifications import (
+    notify_booking_confirmed,
+    notify_cancelled_by_student,
+    notify_pickup_success,
+    notify_return_success,
+    notify_suspended,
+)
 
 
 class BookingError(Exception):
@@ -119,6 +125,8 @@ def cancel_booking(booking):
         booking.cancelled_at = timezone.now()
         booking.save(update_fields=["status", "cancel_reason", "cancelled_at", "updated_at"])
 
+    # แจ้งนักศึกษาทางอีเมลว่ายกเลิกเรียบร้อยแล้ว (ส่งหลัง commit)
+    notify_cancelled_by_student(booking)
     return booking
 
 
@@ -201,7 +209,7 @@ def confirm_return(booking, staff_user, condition_note="", is_damaged=False):
             )
             student.save(update_fields=["is_suspended", "suspended_until", "suspended_reason"])
 
-    notify_return_success(booking)
+    notify_return_success(booking, is_damaged=is_damaged)
     if should_penalize:
         notify_suspended(booking.student, booking=booking)
 

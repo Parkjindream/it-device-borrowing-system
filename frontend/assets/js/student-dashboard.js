@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   document.getElementById("logout-btn").addEventListener("click", logout);
+  updateNavbarAvatar();
   setupTabs();
   setupBookingModal();
   setupProfileModal();
@@ -90,9 +91,7 @@ function renderEquipmentCard(eq) {
   const disableBooking = outOfStock || currentUser.is_suspended;
 
   card.innerHTML = `
-    <div class="rounded-xl overflow-hidden mb-4 bg-[var(--paper)]" style="aspect-ratio: 4/3;">
-      <img src="${equipmentImageSrc(eq)}" alt="${eq.name}" class="w-full h-full object-contain p-2" loading="lazy">
-    </div>
+    <img src="${equipmentImageSrc(eq)}" alt="${eq.name}" class="w-full h-32 object-contain rounded-lg bg-[var(--paper)] p-2 mb-3">
     <div class="flex items-center justify-between mb-3">
       <span class="text-xs font-medium text-[var(--ink)]/50">${eq.category?.name ?? ""}</span>
       <span class="badge ${outOfStock ? "badge-cancelled" : "badge-available"}">
@@ -153,8 +152,8 @@ function openBookingModal(eq) {
   form.reset();
   document.getElementById("modal-error").classList.add("hidden");
   form.equipment_id.value = eq.id;
-  document.getElementById("modal-equipment-image").src = equipmentImageSrc(eq);
-  document.getElementById("modal-equipment-image").alt = eq.name;
+  const modalImg = document.getElementById("modal-equipment-image");
+  if (modalImg) modalImg.src = equipmentImageSrc(eq);
   document.getElementById("modal-equipment-name").textContent = eq.name;
   document.getElementById("modal-equipment-meta").textContent = `ยืมได้สูงสุด ${eq.max_borrow_days} วัน/ครั้ง`;
 
@@ -169,14 +168,14 @@ function openBookingModal(eq) {
 
 function setupClearMyHistory() {
   document.getElementById("clear-my-history-btn").addEventListener("click", async () => {
-    if (!confirm('ล้างประวัติการยืมของฉันที่ "จบแล้ว" (คืนแล้ว/ยกเลิก) และเก่าแล้ว? รายการที่ยังไม่จบจะไม่ถูกแตะต้อง')) return;
+    if (!confirm('ล้างประวัติการยืมของฉันที่ "จบแล้ว" (คืนแล้ว/ยกเลิก) ทั้งหมดทันที? รายการที่ยังไม่จบจะไม่ถูกแตะต้อง')) return;
 
     const btn = document.getElementById("clear-my-history-btn");
     const original = btn.textContent;
     btn.disabled = true;
     btn.textContent = "กำลังล้าง...";
 
-    const { ok, data } = await Api.post("/bookings/clear-history/", null);
+    const { ok, data } = await Api.post("/bookings/clear-history/", { clear_all: true });
 
     btn.disabled = false;
     btn.textContent = original;
@@ -207,6 +206,7 @@ function renderBookingRow(booking) {
   row.className = "surface rounded-xl p-4 flex flex-wrap items-center justify-between gap-3";
 
   const statusInfo = getBookingStatusDisplay(booking);
+  const isFinished = booking.status === "returned" || booking.status === "cancelled";
 
   row.innerHTML = `
     <div class="flex items-center gap-3 min-w-0">
@@ -222,8 +222,19 @@ function renderBookingRow(booking) {
     <div class="flex items-center gap-3 shrink-0">
       <span class="badge ${statusInfo.css}">${statusInfo.text}</span>
       ${booking.status === "awaiting_pickup" ? `<button class="btn btn-outline-navy !py-1.5 !px-3 text-xs cancel-btn">ยกเลิก</button>` : ""}
+      ${isFinished ? `<button class="btn btn-outline-navy !py-1.5 !px-3 text-xs delete-booking-btn" style="color:#c33c3c;border-color:#c33c3c;">ลบ</button>` : ""}
     </div>
   `;
+
+  const deleteBtn = row.querySelector(".delete-booking-btn");
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", async () => {
+      if (!confirm(`ลบประวัติการยืมรหัส "${booking.booking_code}" ทิ้ง?`)) return;
+      const { ok, data } = await Api.delete(`/bookings/${booking.id}/delete/`);
+      if (!ok) { alert(extractErrorMessage(data, "ลบไม่สำเร็จ")); return; }
+      await loadBookingHistory();
+    });
+  }
 
   const cancelBtn = row.querySelector(".cancel-btn");
   if (cancelBtn) {
@@ -242,9 +253,21 @@ function renderBookingRow(booking) {
   return row;
 }
 
+/* ========================= รูปโปรไฟล์บน navbar ========================= */
+
+function updateNavbarAvatar() {
+  const avatar = document.getElementById("navbar-avatar");
+  if (!avatar) return;
+  if (currentUser && currentUser.profile_image) {
+    avatar.src = currentUser.profile_image;
+    avatar.classList.remove("hidden");
+  } else {
+    avatar.classList.add("hidden");
+  }
+}
+
 /* ========================= โปรไฟล์ของฉัน ========================= */
 
-/** คืนช่องอัปโหลดรูปโปรไฟล์กลับเป็นสถานะว่าง หรือโชว์รูปปัจจุบันของผู้ใช้ถ้ามี */
 function resetProfileImageDropzone() {
   const preview = document.getElementById("profile-image-preview");
   const icon = document.getElementById("profile-image-placeholder-icon");
@@ -277,7 +300,6 @@ function setupProfileModal() {
   document.getElementById("profile-modal-close").addEventListener("click", () => modal.classList.add("hidden"));
   document.getElementById("password-modal-close").addEventListener("click", () => modal.classList.add("hidden"));
 
-  // พรีวิวรูปที่เลือกก่อนอัปโหลดจริง
   document.getElementById("profile-image-input").addEventListener("change", (event) => {
     const file = event.target.files[0];
     if (!file) { resetProfileImageDropzone(); return; }
@@ -287,7 +309,6 @@ function setupProfileModal() {
     document.getElementById("profile-image-placeholder-icon").classList.add("hidden");
   });
 
-  // สลับแท็บ "แก้ไขข้อมูล" / "เปลี่ยนรหัสผ่าน" ภายใน modal เดียวกัน
   document.querySelectorAll(".profile-tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".profile-tab-btn").forEach((b) => {
@@ -296,7 +317,6 @@ function setupProfileModal() {
       });
       btn.classList.add("border-[var(--navy)]", "text-[var(--navy)]");
       btn.classList.remove("border-transparent", "text-[var(--ink)]/55");
-
       const tab = btn.dataset.profileTab;
       profileForm.classList.toggle("hidden", tab !== "edit");
       passwordForm.classList.toggle("hidden", tab !== "password");
@@ -311,20 +331,16 @@ function setupProfileModal() {
     errorBox.classList.add("hidden");
     successBox.classList.add("hidden");
     submitBtn.disabled = true;
-    submitBtn.textContent = "กำลังบันทึก...";
 
-    // ใช้ FormData เสมอ (ไม่ใช่ JSON) เพราะต้องรองรับไฟล์รูปโปรไฟล์แบบ multipart
-    const formData = new FormData();
-    formData.set("first_name", profileForm.first_name.value);
-    formData.set("last_name", profileForm.last_name.value);
-    formData.set("student_id", profileForm.student_id.value);
+    const fd = new FormData();
+    fd.set("first_name", profileForm.first_name.value);
+    fd.set("last_name", profileForm.last_name.value);
+    fd.set("student_id", profileForm.student_id.value);
     const imageFile = document.getElementById("profile-image-input").files[0];
-    if (imageFile) formData.set("profile_image", imageFile);
+    if (imageFile) fd.set("profile_image", imageFile);
 
-    const { ok, data } = await Api.postFormData("/auth/me/", formData, { method: "PATCH" });
-
+    const { ok, data } = await Api.postFormData("/auth/me/", fd, { method: "PATCH" });
     submitBtn.disabled = false;
-    submitBtn.textContent = "บันทึก";
 
     if (!ok) {
       errorBox.textContent = extractErrorMessage(data, "บันทึกไม่สำเร็จ");
@@ -332,12 +348,11 @@ function setupProfileModal() {
       return;
     }
 
-    // บันทึกถาวรในฐานข้อมูลแล้ว — อัปเดต session ปัจจุบันให้ตรงกันทันที
     currentUser = data;
     Api.setSession(Api.getToken(), currentUser);
     document.getElementById("welcome-text").textContent = `สวัสดี, ${currentUser.first_name || currentUser.username}`;
+    updateNavbarAvatar();
     document.getElementById("profile-image-input").value = "";
-    resetProfileImageDropzone();
     successBox.textContent = "บันทึกข้อมูลโปรไฟล์สำเร็จแล้ว";
     successBox.classList.remove("hidden");
   });
@@ -360,7 +375,6 @@ function setupProfileModal() {
       errorBox.classList.remove("hidden");
       return;
     }
-
     successBox.textContent = "เปลี่ยนรหัสผ่านสำเร็จแล้ว";
     successBox.classList.remove("hidden");
     passwordForm.reset();

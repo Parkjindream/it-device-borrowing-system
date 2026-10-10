@@ -182,15 +182,15 @@
         </div>
         <h3 class="font-display font-medium">เคลียร์ข้อมูลเก่า</h3>
       </div>
-      <p class="text-sm text-[var(--ink)]/60 mb-4">
-        ระบบเคลียร์ให้อัตโนมัติอยู่แล้วทุกวัน (ประวัติอีเมลเก่ากว่า 7 วัน, ประวัติการยืมที่จบแล้ว
-        เก่ากว่า 180 วัน) ปุ่มนี้ไว้ใช้เคลียร์ทันทีถ้าไม่อยากรอรอบอัตโนมัติ — รายการที่ยัง
-        "รอรับของ/กำลังยืม/เกินกำหนด" จะไม่ถูกลบไม่ว่ากรณีใด
+            <p class="text-sm text-[var(--ink)]/60 mb-4">
+        กดแล้วลบทันทีทั้งหมด (ประวัติอีเมลทั้งหมด / ประวัติการยืมที่ "จบแล้ว" คือคืนแล้วหรือยกเลิก
+        ทั้งหมด) — รายการที่ยัง "รอรับของ/กำลังยืม/เกินกำหนด" จะไม่ถูกลบไม่ว่ากรณีใด
+        นอกจากนี้ระบบยังเคลียร์ของเก่า (เกิน 7/180 วัน) ให้อัตโนมัติทุกวันอยู่แล้วด้วย
       </p>
       <div id="clear-data-message" class="hidden mb-3 text-sm rounded-lg px-3 py-2.5"></div>
       <div class="flex flex-col gap-2">
-        <button id="clear-notifications-btn" class="btn btn-outline-navy btn-block">ล้างประวัติอีเมลที่เก่าแล้วตอนนี้</button>
-        <button id="clear-booking-history-btn" class="btn btn-outline-navy btn-block">ล้างประวัติการยืมที่จบแล้ว (เก่าแล้ว) ตอนนี้</button>
+        <button id="clear-notifications-btn" class="btn btn-outline-navy btn-block">ล้างประวัติอีเมลทั้งหมดตอนนี้</button>
+        <button id="clear-booking-history-btn" class="btn btn-outline-navy btn-block">ล้างประวัติการยืมที่จบแล้วทั้งหมดตอนนี้</button>
       </div>
     </div>
   </section>
@@ -198,7 +198,7 @@
   <!-- ===== Tab: ประวัติอีเมล ===== -->
   <section id="tab-notifications" class="hidden">
     <div class="flex justify-end mb-4">
-      <button id="clear-notifications-now-btn" class="btn btn-outline-navy !py-1.5 !px-4 text-sm">ล้างประวัติเก่าตอนนี้</button>
+    <button id="clear-notifications-now-btn" class="btn btn-outline-navy !py-1.5 !px-4 text-sm">ล้างประวัติทั้งหมดตอนนี้</button>
     </div>
     <div id="notification-list" class="space-y-2"></div>
     <p id="notification-empty" class="hidden text-center text-sm text-[var(--ink)]/50 py-12">ยังไม่มีประวัติการแจ้งเตือน</p>
@@ -229,7 +229,7 @@
 <!-- ===== Modal: เพิ่ม/แก้ไขรุ่นอุปกรณ์ ===== -->
 <div id="equipment-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-5">
   <div class="surface rounded-2xl p-6 w-full max-w-sm">
-    <h3 class="font-display font-semibold text-lg mb-4">เพิ่มรุ่นอุปกรณ์ใหม่</h3>
+      <h3 class="font-display font-semibold text-lg mb-4" id="equipment-modal-title">เพิ่มรุ่นอุปกรณ์ใหม่</h3>
     <div id="equipment-modal-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
     <form id="equipment-form">
       <label class="block mb-4">

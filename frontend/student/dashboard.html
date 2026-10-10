@@ -14,15 +14,19 @@
 
 <!-- ===== Header ===== -->
 <header class="bg-white border-b border-[var(--line)] sticky top-0 z-40">
-  <div class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
-    <div class="flex items-center gap-2.5">
-      <img src="../assets/img/logo.png" alt="โลโก้" class="brand-logo">
-      <span class="font-display font-semibold text-[var(--navy)]">ศูนย์ยืม-คืนอุปกรณ์ไอที</span>
+  <div class="max-w-6xl mx-auto px-4 sm:px-5 py-2.5 min-h-16 flex items-center justify-between gap-2">
+    <div class="flex items-center gap-2 min-w-0">
+      <img src="../assets/img/logo.png" alt="โลโก้" class="brand-logo shrink-0">
+      <span class="font-display font-semibold text-[var(--navy)] text-sm sm:text-base leading-tight">
+        <span class="hidden sm:inline">ศูนย์ยืม-คืนอุปกรณ์ไอที</span>
+        <span class="sm:hidden">ยืมคืนอุปกรณ์</span>
+      </span>
     </div>
-    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3">
+      <img id="navbar-avatar" alt="รูปโปรไฟล์" class="hidden w-9 h-9 rounded-full object-cover border border-[var(--line)]">
       <span id="welcome-text" class="text-sm text-[var(--ink)]/70 hidden sm:inline"></span>
-      <button id="open-profile-btn" class="btn btn-outline-navy !py-1.5 !px-4 text-sm">โปรไฟล์ของฉัน</button>
-      <button id="logout-btn" class="btn btn-outline-navy !py-1.5 !px-4 text-sm">ออกจากระบบ</button>
+      <button id="open-profile-btn" class="btn btn-outline-navy !py-1.5 !px-3 sm:!px-4 text-xs sm:text-sm whitespace-nowrap">โปรไฟล์</button>
+      <button id="logout-btn" class="btn btn-outline-navy !py-1.5 !px-3 sm:!px-4 text-xs sm:text-sm whitespace-nowrap">ออกจากระบบ</button>
     </div>
   </div>
 </header>
