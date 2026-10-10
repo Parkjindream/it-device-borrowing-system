@@ -10,9 +10,11 @@
  * แต่ถ้าต้องการ "บังคับ" ค่าใดค่าหนึ่งแน่นอน ให้ลบทั้งฟังก์ชันด้านล่างแล้วใส่ค่าคงที่แทน เช่น:
  *   const API_BASE_URL = "https://borrow.yourcollege.ac.th/api";
  */
-const API_BASE_URL = (() => {
+   // เรียก API ผ่านที่อยู่เดียวกับหน้าเว็บ (dev_server.py หรือ nginx ส่งต่อให้ backend)
+const API_BASE_URL = "/api";
+/*const API_BASE_URL = (() => {
   const isLocalDevServer =
     ["localhost", "127.0.0.1"].includes(location.hostname) &&
     ["5500", "8080", "5501", "3000"].includes(location.port);
   return isLocalDevServer ? "http://127.0.0.1:8000/api" : "/api";
-})();
+})();**/
