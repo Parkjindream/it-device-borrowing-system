@@ -1,5 +1,6 @@
 let currentUser = null;
 let allEquipment = [];
+let activeBooking = null; // รายการที่ยังไม่จบของฉัน (รอรับของ/กำลังยืม/เกินกำหนด) — มีได้สูงสุด 1 รายการ
 
 document.addEventListener("DOMContentLoaded", async () => {
   currentUser = await requireAuth("student");
@@ -61,7 +62,35 @@ async function loadCategories() {
   });
 }
 
+/** หารายการที่ยังไม่จบของฉัน แล้วโชว์/ซ่อนแถบแจ้งเตือนเหนือรายการอุปกรณ์ */
+async function refreshActiveBooking() {
+  const { ok, data } = await Api.get("/bookings/");
+  activeBooking = ok && Array.isArray(data)
+    ? data.find((b) => ["awaiting_pickup", "borrowed", "overdue"].includes(b.status)) || null
+    : null;
+
+  let banner = document.getElementById("active-booking-banner");
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = "active-booking-banner";
+    banner.className = "hidden mb-4 text-sm rounded-lg px-4 py-3";
+    banner.style.background = "#fff6e0";
+    banner.style.color = "#8a5a00";
+    const grid = document.getElementById("equipment-grid");
+    grid.parentNode.insertBefore(banner, grid);
+  }
+  if (activeBooking) {
+    banner.textContent =
+      `คุณมีรายการ "${activeBooking.equipment_name}" (รหัส ${activeBooking.booking_code}) ค้างอยู่ — ` +
+      `1 คนยืมได้ครั้งละ 1 เครื่อง กรุณาคืนอุปกรณ์หรือยกเลิกการจองก่อน จึงจะจองชิ้นใหม่ได้`;
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+  }
+}
+
 async function loadEquipment() {
+  await refreshActiveBooking();
   const search = document.getElementById("search-input").value.trim();
   const category = document.getElementById("category-select").value;
   const params = new URLSearchParams();
@@ -88,7 +117,7 @@ function renderEquipmentCard(eq) {
   card.className = "surface rounded-2xl p-5 flex flex-col";
 
   const outOfStock = eq.available_units === 0;
-  const disableBooking = outOfStock || currentUser.is_suspended;
+  const disableBooking = outOfStock || currentUser.is_suspended || Boolean(activeBooking);
 
   card.innerHTML = `
     <img src="${equipmentImageSrc(eq)}" alt="${eq.name}" class="w-full h-32 object-contain rounded-lg bg-[var(--paper)] p-2 mb-3">
@@ -101,7 +130,7 @@ function renderEquipmentCard(eq) {
     <h3 class="font-display font-medium mb-1.5">${eq.name}</h3>
     <p class="text-xs text-[var(--ink)]/55 mb-4">ยืมได้สูงสุด ${eq.max_borrow_days} วัน/ครั้ง</p>
     <button class="btn btn-primary btn-block mt-auto book-btn" ${disableBooking ? "disabled" : ""}>
-      ${outOfStock ? "ของหมดชั่วคราว" : "จองอุปกรณ์นี้"}
+      ${outOfStock ? "ของหมดชั่วคราว" : (activeBooking ? "มีรายการค้างอยู่" : "จองอุปกรณ์นี้")}
     </button>
   `;
 
