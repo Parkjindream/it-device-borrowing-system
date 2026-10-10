@@ -26,6 +26,9 @@ backend/.env
 backend/staticfiles/
 backend/media/
 
+# ข้อมูลของ container ที่ mount ลงโฟลเดอร์ในโปรเจกต์ (ไฟล์อัปโหลดใน MinIO ฯลฯ)
+.docker-mount/
+
 # ไฟล์สำรองฐานข้อมูลจาก docker compose (มีข้อมูลผู้ใช้จริง ห้ามขึ้น git)
 backups/*
 !backups/.gitkeep

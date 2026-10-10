@@ -355,6 +355,17 @@ class ApiAndPermissionTests(BaseTestCase):
             call_command("ensure_superuser", stdout=mock.MagicMock())
         self.assertFalse(User.objects.filter(is_superuser=True).exists())
 
+    def test_ensure_user_creates_regular_student_once(self):
+        env = {"SEED_USER_USERNAME": "harry", "SEED_USER_EMAIL": "harry@example.com",
+               "SEED_USER_PASSWORD": "1234", "SEED_USER_ROLE": ""}
+        with mock.patch.dict(os.environ, env):
+            call_command("ensure_user", stdout=mock.MagicMock())
+            call_command("ensure_user", stdout=mock.MagicMock())
+        harry = User.objects.get(username="harry")
+        self.assertEqual((harry.role, harry.is_superuser, harry.is_staff), ("student", False, False))
+        resp = APIClient().post("/auth/login/", {"email": "harry@example.com", "password": "1234"}, format="json")
+        self.assertEqual(resp.status_code, 200)
+
     @override_settings(FRONTEND_RESET_PASSWORD_URL="", ALLOWED_HOSTS=[".trycloudflare.com"])
     def test_reset_link_uses_request_host_when_url_not_set(self):
         resp = APIClient().post("/auth/password-reset/", {"email": self.student.email}, format="json",

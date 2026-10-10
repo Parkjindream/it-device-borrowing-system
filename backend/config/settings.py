@@ -111,7 +111,29 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"   # collectstatic เก็บที่นี่ (Docker ให้ nginx เสิร์ฟ)
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"          # รูปอุปกรณ์ที่เจ้าหน้าที่อัปโหลด
+MEDIA_ROOT = BASE_DIR / "media"          # รูปอุปกรณ์ที่เจ้าหน้าที่อัปโหลด (ใช้เมื่อไม่ได้ตั้ง MINIO_ENDPOINT)
+
+# --- ที่เก็บไฟล์อัปโหลดบน MinIO (S3) ---
+# docker compose ตั้ง MINIO_ENDPOINT=http://minio:9000 ให้เอง / ตอนพัฒนาบนเครื่องเว้นว่าง = เก็บลง MEDIA_ROOT
+# bucket สร้างให้อัตโนมัติตอน migrate (python manage.py ensure_media_bucket)
+MINIO_ENDPOINT = config("MINIO_ENDPOINT", default="")
+if MINIO_ENDPOINT:
+    STORAGES = {
+        "default": {"BACKEND": "config.storage.MediaStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+    AWS_S3_ENDPOINT_URL = MINIO_ENDPOINT
+    AWS_ACCESS_KEY_ID = config("MINIO_ACCESS_KEY")
+    AWS_SECRET_ACCESS_KEY = config("MINIO_SECRET_KEY")
+    # nginx proxy /media/ ไปที่ bucket ชื่อเดียวกันตรง ๆ — เปลี่ยนชื่อต้องแก้ nginx.conf ด้วย
+    AWS_STORAGE_BUCKET_NAME = config("MINIO_BUCKET", default="media")
+    AWS_S3_REGION_NAME = "us-east-1"
+    AWS_S3_ADDRESSING_STYLE = "path"
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = False
+    # ชื่อไฟล์ซ้ำ -> เติมตัวสุ่มต่อท้ายเหมือนเก็บลงดิสก์ (ค่าเริ่มต้นของ S3 คือเขียนทับรูปของคนอื่น)
+    AWS_S3_FILE_OVERWRITE = False
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

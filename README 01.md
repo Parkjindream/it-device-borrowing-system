@@ -165,14 +165,15 @@ docker compose logs cloudflared | grep -o 'https://[a-z0-9-]*\.trycloudflare\.co
 | service | หน้าที่ |
 |---|---|
 | `db` | PostgreSQL 16 (ข้อมูลอยู่ใน volume `pgdata`) ต่อจากเครื่องเซิร์ฟเวอร์ได้ที่ `localhost:5433` |
-| `migrate` | รัน migrate + สร้างแอดมินครั้งเดียวแล้วจบ (backend/scheduler รอตัวนี้ก่อน) |
+| `minio` | เก็บไฟล์อัปโหลด (รูปอุปกรณ์/รูปโปรไฟล์) ข้อมูลอยู่ที่โฟลเดอร์ `.docker-mount/minio` หน้าเว็บจัดการไฟล์ `http://localhost:9001` |
+| `migrate` | รัน migrate + สร้างแอดมิน + สร้าง bucket ใน MinIO ครั้งเดียวแล้วจบ (backend/scheduler รอตัวนี้ก่อน) |
 | `backend` / `scheduler` | Django API / งานอัตโนมัติ |
 | `frontend` | nginx ทางเข้าเดียวของเว็บ |
 | `cloudflared` | Cloudflare Quick Tunnel ให้คนภายนอกเข้าผ่าน https |
 | `db-backup` | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.yml` เพื่อเปิด: `pg_dump` ทุกวันตี 2 ลง `./backups` เก็บ 14 วัน |
 | `pgadmin` | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.yml` เพื่อเปิด แล้วเข้าที่ `http://localhost:5050` |
 
-`db`, `frontend` ผูกพอร์ตไว้แค่ `127.0.0.1` — จากเครื่องอื่นให้ใช้ `ssh -L 5433:localhost:5433 <เซิร์ฟเวอร์>`
+`db`, `minio`, `frontend` ผูกพอร์ตไว้แค่ `127.0.0.1` — จากเครื่องอื่นให้ใช้ `ssh -L 5433:localhost:5433 <เซิร์ฟเวอร์>`
 
 กู้คืนฐานข้อมูลจากไฟล์สำรอง:
 ```bash
@@ -182,7 +183,7 @@ docker compose start backend scheduler
 ```
 
 **สถาปัตยกรรมตอน deploy:** `Cloudflare Tunnel (cloudflared)` → `nginx (frontend container)` ซึ่งเป็นทางเข้า
-เดียว เสิร์ฟไฟล์เว็บ + `/static/`, `/media/` เอง และ proxy `/api/*` ไปยัง `backend container`
+เดียว เสิร์ฟไฟล์เว็บ + `/static/` เอง, ดึง `/media/` จาก MinIO และ proxy `/api/*` ไปยัง `backend container`
 (Django+gunicorn) โดยตัด `/api` ออก (`/api/auth/login/` → backend `/auth/login/`) ทำให้ frontend
 กับ backend อยู่ origin เดียวกันจากมุมมองเบราว์เซอร์ — **ไม่มีปัญหา CORS เลยตอน production**
 (ต่างจากตอนพัฒนาที่รันคนละพอร์ตจึงต้องพึ่ง `CORS_ALLOWED_ORIGINS`) ส่วน container `scheduler` รันงาน

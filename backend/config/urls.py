@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.core.files.storage import default_storage
+from django.http import FileResponse, Http404
 
 admin.site.site_header = "ศูนย์ยืม-คืนอุปกรณ์ไอที — ผู้ดูแลระบบ"
 admin.site.site_title = "ผู้ดูแลระบบ"
@@ -14,6 +16,16 @@ urlpatterns = [
     path("", include("rental.urls")),
 ]
 
-# ตอนพัฒนา (DEBUG) ให้ Django เสิร์ฟรูปที่อัปโหลดเอง / ตอนใช้ Docker nginx เสิร์ฟ /media/ ให้
+
+def serve_media_from_storage(request, name):
+    if not default_storage.exists(name):
+        raise Http404
+    return FileResponse(default_storage.open(name))
+
+
+# ตอนพัฒนา (DEBUG) ให้ Django เสิร์ฟรูปที่อัปโหลดเอง / ตอนใช้ Docker nginx ดึงจาก MinIO มาเสิร์ฟ /media/ ให้
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    if settings.MINIO_ENDPOINT:
+        urlpatterns += [path(f"{settings.MEDIA_URL.strip('/')}/<path:name>", serve_media_from_storage)]
+    else:
+        urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
