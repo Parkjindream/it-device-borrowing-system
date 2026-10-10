@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.db.models import ProtectedError
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -187,39 +188,84 @@ class EquipmentWriteSerializer(serializers.ModelSerializer):
         error_messages={"max_value": "เพิ่มได้ครั้งละไม่เกิน 200 เครื่อง", "min_value": "จำนวนต้องไม่ติดลบ"},
     )
 
+    # จำนวนเครื่อง "ทั้งหมด" ที่ต้องการตอนแก้ไขรุ่นเดิม — ระบบเพิ่ม/ลบเครื่องให้ตรงจำนวนนี้
+    target_units = serializers.IntegerField(
+        write_only=True, required=False, min_value=0, max_value=500,
+        error_messages={"max_value": "จำนวนเครื่องสูงสุด 500 เครื่อง", "min_value": "จำนวนต้องไม่ติดลบ"},
+    )
+
     class Meta:
         model = Equipment
-        fields = ["id", "category", "name", "description", "image", "max_borrow_days", "is_active", "initial_units"]
+        fields = [
+            "id", "category", "name", "description", "image", "max_borrow_days", "is_active",
+            "initial_units", "target_units",
+        ]
 
     def validate_image(self, image):
         if image and image.size > MAX_IMAGE_BYTES:
             raise serializers.ValidationError("รูปภาพต้องมีขนาดไม่เกิน 5 MB")
         return image
 
+    @staticmethod
+    def _add_units(equipment, count):
+        """สร้างเครื่องเพิ่ม count เครื่อง พร้อมหมายเลขอัตโนมัติ เช่น EQ012-001 (ข้ามเลขที่ซ้ำให้เอง)"""
+        n = EquipmentUnit.objects.filter(equipment=equipment).count()
+        created = 0
+        while created < count:
+            n += 1
+            serial = f"EQ{equipment.pk:03d}-{n:03d}"
+            if EquipmentUnit.objects.filter(serial_number=serial).exists():
+                continue
+            EquipmentUnit.objects.create(equipment=equipment, serial_number=serial)
+            created += 1
+
+    @staticmethod
+    def _remove_units(equipment, count):
+        """
+        ลดเครื่องลง count เครื่อง — ลบเฉพาะเครื่องที่ 'ว่าง' (หรือปิดใช้งาน) และไม่มีประวัติการยืมผูกอยู่
+        เครื่องที่กำลังจอง/ยืมอยู่จะไม่ถูกแตะ ถ้าลบได้ไม่ครบตามที่ขอจะแจ้ง error และไม่เปลี่ยนอะไรเลย
+        """
+        candidates = list(
+            EquipmentUnit.objects.select_for_update()
+            .filter(equipment=equipment, status__in=[EquipmentUnit.Status.AVAILABLE, EquipmentUnit.Status.DISABLED])
+            .order_by("status", "-id")  # ลบเครื่องว่างก่อน แล้วค่อยเครื่องที่ปิดใช้งาน / ลบตัวที่เพิ่มล่าสุดก่อน
+        )
+        removed = 0
+        for unit in candidates:
+            if removed >= count:
+                break
+            try:
+                with transaction.atomic():
+                    unit.delete()
+                removed += 1
+            except ProtectedError:
+                continue  # เครื่องนี้มีประวัติการยืมผูกอยู่ ลบไม่ได้ ข้ามไป
+        if removed < count:
+            raise serializers.ValidationError({
+                "target_units": f"ลดได้ไม่ถึงจำนวนที่ต้องการ (ลดได้เพียง {removed} เครื่อง) "
+                                f"เพราะเครื่องที่เหลือกำลังถูกจอง/ยืม หรือมีประวัติการยืมผูกอยู่"
+            })
+
     def create(self, validated_data):
         count = validated_data.pop("initial_units", 0)
+        validated_data.pop("target_units", None)
         with transaction.atomic():
             equipment = super().create(validated_data)
-            # สร้างหมายเลขเครื่องอัตโนมัติ เช่น EQ012-001, EQ012-002 (ข้ามเลขที่ซ้ำกับของเดิมให้เอง)
-            n = 0
-            created = 0
-            while created < count:
-                n += 1
-                serial = f"EQ{equipment.pk:03d}-{n:03d}"
-                if EquipmentUnit.objects.filter(serial_number=serial).exists():
-                    continue
-                EquipmentUnit.objects.create(equipment=equipment, serial_number=serial)
-                created += 1
+            self._add_units(equipment, count)
         return equipment
 
     def update(self, instance, validated_data):
-        validated_data.pop("initial_units", None)  # แก้ไขรุ่นไม่เพิ่มเครื่อง (ใช้ปุ่ม "+ เพิ่มเครื่อง")
-        return super().update(instance, validated_data)
-
-    def validate_max_borrow_days(self, value):
-        if value < 1 or value > 60:
-            raise serializers.ValidationError("จำนวนวันยืมต้องอยู่ระหว่าง 1-60 วัน")
-        return value
+        validated_data.pop("initial_units", None)
+        target = validated_data.pop("target_units", None)
+        with transaction.atomic():
+            equipment = super().update(instance, validated_data)
+            if target is not None:
+                current = EquipmentUnit.objects.filter(equipment=equipment).count()
+                if target > current:
+                    self._add_units(equipment, target - current)
+                elif target < current:
+                    self._remove_units(equipment, current - target)
+        return equipment
 
 
 class PublicEquipmentSerializer(serializers.ModelSerializer):

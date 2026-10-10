@@ -18,7 +18,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Booking, Equipment, EquipmentUnit, PenaltySettings
+from .models import Booking, Equipment, EquipmentUnit, PenaltySettings, User
 from .notifications import (
     notify_booking_confirmed,
     notify_cancelled_by_student,
@@ -63,6 +63,9 @@ def create_booking(student, equipment_id, start_date, end_date):
         raise BookingError(f"จองล่วงหน้าได้ไม่เกิน {max_advance} วัน")
 
     with transaction.atomic():
+        # ล็อกแถวนักศึกษาก่อน: กันกดจองหลายอุปกรณ์พร้อมกันแล้วหลุดกฎ "1 คน 1 เครื่อง"
+        User.objects.select_for_update().get(pk=student.pk)
+
         try:
             # ล็อกแถว equipment ไว้ก่อน: กันเจ้าหน้าที่ปิดใช้งานพร้อมกับตอนจอง และ
             # ทำให้การเช็ค "จองรุ่นเดียวกันซ้อน" ด้านล่างเชื่อถือได้ (คำขอของนักศึกษาคนเดียวกันเข้าคิวทีละอัน)
@@ -73,13 +76,18 @@ def create_booking(student, equipment_id, start_date, end_date):
         if (end_date - start_date).days > equipment.max_borrow_days:
             raise BookingError(f"อุปกรณ์นี้ยืมได้สูงสุด {equipment.max_borrow_days} วันต่อครั้ง")
 
-        has_active_booking = Booking.objects.filter(
+        # กติกา: นักศึกษา 1 คน มีรายการที่ยังไม่จบได้แค่ 1 รายการ (รวมทุกรุ่นอุปกรณ์)
+        # จนกว่าจะคืนของชิ้นเดิมหรือยกเลิกการจอง จึงจะจองชิ้นต่อไปได้
+        active_booking = Booking.objects.filter(
             student=student,
-            unit__equipment_id=equipment_id,
             status__in=[Booking.Status.AWAITING_PICKUP, Booking.Status.BORROWED, Booking.Status.OVERDUE],
-        ).exists()
-        if has_active_booking:
-            raise BookingError("คุณมีรายการยืมอุปกรณ์รุ่นนี้ค้างอยู่แล้ว ไม่สามารถจองซ้ำได้")
+        ).select_related("unit__equipment").first()
+        if active_booking is not None:
+            raise BookingError(
+                f"คุณมีรายการ '{active_booking.unit.equipment.name}' ค้างอยู่ "
+                f"(รหัส {active_booking.booking_code}) — 1 คนยืมได้ครั้งละ 1 เครื่อง "
+                f"กรุณาคืนของหรือยกเลิกการจองก่อน จึงจะจองชิ้นใหม่ได้"
+            )
 
         # *** จุดกัน race condition ที่สำคัญที่สุดของทั้งระบบ ***
         unit = (
