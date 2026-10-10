@@ -169,7 +169,7 @@ docker compose logs cloudflared | grep -o 'https://[a-z0-9-]*\.trycloudflare\.co
 | `backend` / `scheduler` | Django API / งานอัตโนมัติ |
 | `frontend` | nginx ทางเข้าเดียวของเว็บ |
 | `cloudflared` | Cloudflare Quick Tunnel ให้คนภายนอกเข้าผ่าน https |
-| `db-backup` | `pg_dump` ทุกวันตี 2 ลง `./backups` เก็บ 14 วัน (ปรับที่ `BACKUP_HOUR`/`BACKUP_KEEP_DAYS`) |
+| `db-backup` | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.yml` เพื่อเปิด: `pg_dump` ทุกวันตี 2 ลง `./backups` เก็บ 14 วัน |
 | `pgadmin` | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.yml` เพื่อเปิด แล้วเข้าที่ `http://localhost:5050` |
 
 `db`, `frontend` ผูกพอร์ตไว้แค่ `127.0.0.1` — จากเครื่องอื่นให้ใช้ `ssh -L 5433:localhost:5433 <เซิร์ฟเวอร์>`

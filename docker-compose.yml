@@ -16,7 +16,7 @@
 # เครื่องมือฐานข้อมูล (เปิดเฉพาะในเครื่องเซิร์ฟเวอร์ — จากเครื่องอื่นใช้ ssh -L):
 #   pgAdmin      ปิดไว้ก่อน (เปิดได้ที่ service pgadmin ด้านล่าง)
 #   PostgreSQL   localhost:5433          (DB_EXPOSE_PORT) สำหรับ psql/DBeaver
-#   สำรองข้อมูล   ./backups ทุกวัน         (วิธีกู้คืนดูใน db/backup.sh)
+#   สำรองข้อมูล   ปิดไว้ก่อน (เปิดได้ที่ service db-backup ด้านล่าง วิธีกู้คืนดูใน db/backup.sh)
 #
 # services ทั้งหมดอยู่ในเครือข่ายเดียวกัน (docker network) เรียกหากันด้วยชื่อ service
 # (backend เรียก db ว่า "db", frontend เรียก backend ว่า "backend" — ตั้งไว้ใน nginx.conf แล้ว)
@@ -90,26 +90,27 @@ services:
       - media_data:/app/media
     command: ["python", "manage.py", "run_scheduler"]
 
+  # [ปิดไว้ก่อน — เปิดใช้: ลบ # หน้าบรรทัดของ service นี้]
   # สำรองฐานข้อมูลทุกวันลง ./backups บนเครื่อง ลบไฟล์ที่เก่าเกิน BACKUP_KEEP_DAYS วันอัตโนมัติ
-  db-backup:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      PGHOST: db
-      PGDATABASE: ${DB_NAME:-it_lending_db}
-      PGUSER: ${DB_USER:-postgres}
-      PGPASSWORD: ${DB_PASSWORD}
-      BACKUP_HOUR: ${BACKUP_HOUR:-2}
-      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
-      TZ: Asia/Bangkok
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./backups:/backups
-      - ./db/backup.sh:/backup.sh:ro
-    # ตัด \r ก่อนรัน เผื่อไฟล์ถูก checkout บน Windows เป็น CRLF (mount มาจากเครื่องตรง ๆ แก้ใน image ไม่ได้)
-    entrypoint: ["sh", "-c", "tr -d '\\r' < /backup.sh > /tmp/backup.sh && exec sh /tmp/backup.sh"]
+  # db-backup:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     PGHOST: db
+  #     PGDATABASE: ${DB_NAME:-it_lending_db}
+  #     PGUSER: ${DB_USER:-postgres}
+  #     PGPASSWORD: ${DB_PASSWORD}
+  #     BACKUP_HOUR: ${BACKUP_HOUR:-2}
+  #     BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+  #     TZ: Asia/Bangkok
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./backups:/backups
+  #     - ./db/backup.sh:/backup.sh:ro
+  #   # ตัด \r ก่อนรัน เผื่อไฟล์ถูก checkout บน Windows เป็น CRLF (mount มาจากเครื่องตรง ๆ แก้ใน image ไม่ได้)
+  #   entrypoint: ["sh", "-c", "tr -d '\\r' < /backup.sh > /tmp/backup.sh && exec sh /tmp/backup.sh"]
 
   # [ปิดไว้ก่อน — เปิดใช้: ลบ # หน้าบรรทัดของ service นี้ + "configs:" และ "pgadmin_data:" ท้ายไฟล์
   #  แล้วใส่ PGADMIN_EMAIL / PGADMIN_PASSWORD ใน .env]
