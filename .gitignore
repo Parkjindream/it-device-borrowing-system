@@ -26,6 +26,10 @@ backend/.env
 backend/staticfiles/
 backend/media/
 
+# ไฟล์สำรองฐานข้อมูลจาก docker compose (มีข้อมูลผู้ใช้จริง ห้ามขึ้น git)
+backups/*
+!backups/.gitkeep
+
 # ==========================================
 # 4. OS & IDE System Files
 # ==========================================

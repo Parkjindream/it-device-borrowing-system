@@ -7,9 +7,11 @@ admin.site.site_header = "ศูนย์ยืม-คืนอุปกรณ�
 admin.site.site_title = "ผู้ดูแลระบบ"
 admin.site.index_title = "จัดการข้อมูลระบบ"
 
+# nginx/dev_server.py ตัด /api ออกก่อนส่งมา ฝั่ง Django จึงเริ่มเส้นทางที่ราก
+# (ภายนอกเข้าเป็น /api/auth/login/, /api/admin/ — prefix /api ตั้งไว้ที่ FORCE_SCRIPT_NAME ใน settings)
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/", include("rental.urls")),
+    path("", include("rental.urls")),
 ]
 
 # ตอนพัฒนา (DEBUG) ให้ Django เสิร์ฟรูปที่อัปโหลดเอง / ตอนใช้ Docker nginx เสิร์ฟ /media/ ให้

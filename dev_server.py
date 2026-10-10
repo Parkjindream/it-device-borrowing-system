@@ -2,14 +2,15 @@
 เซิร์ฟเวอร์สำหรับทดสอบในเครื่อง (ใช้แทน Live Server / http.server)
 
   http://127.0.0.1:5500/          -> ไฟล์ในโฟลเดอร์ frontend/ (หน้าแรกของระบบ)
-  http://127.0.0.1:5500/api/...   -> ส่งต่อไป Django ที่ http://127.0.0.1:8000/api/...
-  /admin/, /static/, /media/      -> ส่งต่อไป Django เช่นกัน
+  http://127.0.0.1:5500/api/...   -> ส่งต่อไป Django ที่ http://127.0.0.1:8000/... (ตัด /api ออก เหมือน nginx)
+                                     หน้า admin จึงอยู่ที่ /api/admin/
+  /static/, /media/               -> ส่งต่อไป Django ตรง ๆ (ไม่ตัดอะไร)
 
 วิธีใช้ (เปิด 2 เทอร์มินัล):
   1) cd backend ; python manage.py runserver            (พอร์ต 8000)
   2) python dev_server.py                                (อยู่ที่โฟลเดอร์รากโปรเจกต์)
 
-หมายเหตุ: ไม่ตัด /api ออกตอนส่งต่อ เพราะเส้นทางของ Django ขึ้นต้นด้วย /api/ อยู่แล้ว
+หมายเหตุ: Django ตั้ง FORCE_SCRIPT_NAME=/api ไว้ ลิงก์ที่มันสร้างจึงมี /api นำหน้ากลับมาเอง
 """
 import http.server
 import os
@@ -21,7 +22,8 @@ import urllib.request
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
 BACKEND = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
 PORT = int(os.environ.get("PORT", "5500"))
-PROXY_PREFIXES = ("/api/", "/admin/", "/static/", "/media/")
+API_PREFIX = "/api"
+PROXY_PREFIXES = (API_PREFIX + "/", "/static/", "/media/")
 HOP_BY_HOP = {"connection", "keep-alive", "transfer-encoding", "te", "trailer", "upgrade",
               "proxy-authorization", "proxy-authenticate"}
 
@@ -31,14 +33,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=FRONTEND_DIR, **kwargs)
 
     def _is_proxy(self):
-        return self.path.startswith(PROXY_PREFIXES) or self.path in ("/api", "/admin")
+        return self.path.startswith(PROXY_PREFIXES)
 
     def _proxy(self):
         length = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(length) if length else None
         headers = {k: v for k, v in self.headers.items() if k.lower() not in HOP_BY_HOP}
         # คง Host เดิม (เช่น 127.0.0.1:5500) เพื่อให้ลิงก์รูปที่ Django สร้างชี้กลับมาที่พอร์ตนี้
-        req = urllib.request.Request(BACKEND + self.path, data=body, headers=headers, method=self.command)
+        path = self.path[len(API_PREFIX):] if self.path.startswith(API_PREFIX + "/") else self.path
+        req = urllib.request.Request(BACKEND + path, data=body, headers=headers, method=self.command)
         try:
             resp = urllib.request.urlopen(req, timeout=60)
         except urllib.error.HTTPError as err:
@@ -86,5 +89,6 @@ if __name__ == "__main__":
     if not os.path.isdir(FRONTEND_DIR):
         sys.exit(f"ไม่พบโฟลเดอร์ {FRONTEND_DIR} — รันไฟล์นี้จากโฟลเดอร์รากของโปรเจกต์")
     print(f"หน้าเว็บ  : http://127.0.0.1:{PORT}/")
-    print(f"ส่งต่อ API : /api /admin /static /media -> {BACKEND}")
+    print(f"ส่งต่อ API : /api/* -> {BACKEND}/*  (/static /media ส่งตรง)")
+    print(f"หน้า admin : http://127.0.0.1:{PORT}/api/admin/")
     Server(("127.0.0.1", PORT), Handler).serve_forever()
