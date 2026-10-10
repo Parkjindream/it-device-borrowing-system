@@ -337,6 +337,7 @@ class NotificationLog(models.Model):
         SUSPENDED = "suspended", "ถูกพักสิทธิ์"
         RETURN_SUCCESS = "return_success", "คืนสำเร็จ"
         AUTO_CANCELLED = "auto_cancelled", "ยกเลิกอัตโนมัติ (ไม่มารับ)"
+        CANCELLED_BY_STUDENT = "cancelled_by_student", "นักศึกษายกเลิกเอง"
 
     booking = models.ForeignKey(
         Booking, on_delete=models.CASCADE, null=True, blank=True, related_name="notifications"

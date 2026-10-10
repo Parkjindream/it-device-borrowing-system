@@ -244,6 +244,12 @@
         <span class="text-sm font-medium">ยืมได้สูงสุด (วัน)</span>
         <input type="number" name="max_borrow_days" required min="1" value="7" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
       </label>
+      <label class="block mb-4" id="initial-units-wrap">
+        <span class="text-sm font-medium">จำนวนเครื่องที่มีตอนนี้</span>
+        <input type="number" id="initial-units-input" min="0" max="200" value="1" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+        <p class="text-xs text-[var(--ink)]/50 mt-1.5">ระบบจะสร้างหมายเลขเครื่องให้อัตโนมัติ (ใส่ 0 ถ้าจะเพิ่มทีหลัง)</p>
+      </label>
+
       <label class="block mb-5">
         <span class="text-sm font-medium">รูปภาพอุปกรณ์ (ไม่บังคับ)</span>
         <label for="equipment-image-input" id="equipment-image-dropzone"
