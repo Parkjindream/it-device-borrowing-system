@@ -346,6 +346,30 @@ function resetProfileImageDropzone() {
   }
 }
 
+/** ย่อรูปก่อนอัปโหลด: ด้านยาวสุด 800px, JPEG คุณภาพ 0.85 (รูปโปรไฟล์ไม่ต้องใหญ่ → อัปเร็ว ไม่ชนขีดจำกัดขนาดไฟล์) */
+function compressImage(file, maxSide = 800, quality = 0.85) {
+  return new Promise((resolve) => {
+    if (!file || !file.type.startsWith("image/")) return resolve(file);
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => resolve(blob ? new File([blob], "profile.jpg", { type: "image/jpeg" }) : file),
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 function setupProfileModal() {
   const modal = document.getElementById("profile-modal");
   const profileForm = document.getElementById("profile-form");
@@ -396,19 +420,24 @@ function setupProfileModal() {
     errorBox.classList.add("hidden");
     successBox.classList.add("hidden");
     submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = "กำลังอัปโหลด...";
 
     const fd = new FormData();
     fd.set("first_name", profileForm.first_name.value);
     fd.set("last_name", profileForm.last_name.value);
     fd.set("student_id", profileForm.student_id.value);
     const imageFile = document.getElementById("profile-image-input").files[0];
-    if (imageFile) fd.set("profile_image", imageFile);
+    if (imageFile) fd.set("profile_image", await compressImage(imageFile));
 
-    const { ok, data } = await Api.postFormData("/auth/me/", fd, { method: "PATCH" });
+    const { ok, status, data } = await Api.postFormData("/auth/me/", fd, { method: "PATCH" });
     submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
 
     if (!ok) {
-      errorBox.textContent = extractErrorMessage(data, "บันทึกไม่สำเร็จ");
+      errorBox.textContent = status === 413
+        ? "ไฟล์รูปใหญ่เกินไป กรุณาเลือกรูปที่เล็กกว่านี้"
+        : extractErrorMessage(data, "บันทึกไม่สำเร็จ");
       errorBox.classList.remove("hidden");
       return;
     }
