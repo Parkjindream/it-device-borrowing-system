@@ -91,13 +91,26 @@ class BookingFlowTests(BaseTestCase):
 
     def test_invalid_dates_rejected(self):
         with self.assertRaises(BookingError):  # คืนก่อนวันเริ่ม
-            create_booking(self.student, self.equipment.id, self.today, self.today)
+            create_booking(self.student, self.equipment.id, self.today, self.today - timedelta(days=1))
         with self.assertRaises(BookingError):  # เริ่มยืมย้อนหลัง
             create_booking(self.student, self.equipment.id, self.today - timedelta(days=1), self.today + timedelta(days=2))
         with self.assertRaises(BookingError):  # ยืมนานเกินกำหนดของรุ่นนี้
             create_booking(self.student, self.equipment.id, self.today, self.today + timedelta(days=30))
         with self.assertRaises(BookingError):  # จองล่วงหน้านานเกินไป
             create_booking(self.student, self.equipment.id, self.today + timedelta(days=30), self.today + timedelta(days=32))
+
+    def test_single_day_booking_allowed(self):
+        # นับวันแบบรวมวันเริ่ม: เริ่มและคืนวันเดียวกัน = ยืม 1 วัน
+        booking = create_booking(self.student, self.equipment.id, self.today, self.today)
+        self.assertEqual(booking.requested_start_date, booking.requested_end_date)
+
+    def test_borrow_days_counted_inclusively(self):
+        self.equipment.max_borrow_days = 3
+        self.equipment.save()
+        ok = create_booking(self.student, self.equipment.id, self.today, self.today + timedelta(days=2))  # 3 วันพอดี
+        self.assertEqual(ok.requested_end_date, self.today + timedelta(days=2))
+        with self.assertRaises(BookingError):  # 4 วัน เกินกำหนด
+            create_booking(self.student2, self.equipment.id, self.today, self.today + timedelta(days=3))
 
     def test_cancel_returns_unit_to_stock(self):
         client = self.client_for(self.student)
@@ -412,7 +425,11 @@ class ApiAndPermissionTests(BaseTestCase):
         }, format="json")
         self.assertEqual(resp.status_code, 201)
         new_user = User.objects.get(email="new@example.ac.th")
-        self.assertFalse(new_user.has_usable_password())  # ต้องตั้งรหัสผ่านเองผ่าน "ลืมรหัสผ่าน"
+        self.assertFalse(new_user.has_usable_password())  # ต้องตั้งรหัสผ่านเองผ่านลิงก์ในอีเมล
+        # ต้องมีอีเมลต้อนรับพร้อมลิงก์ตั้งรหัสผ่านส่งถึงนักศึกษา
+        welcome = [m for m in mail.outbox if "new@example.ac.th" in m.to]
+        self.assertEqual(len(welcome), 1)
+        self.assertIn("/reset-password.html?uid=", welcome[0].body)
 
         resp = client.post("/staff/students/import/", {"students": [
             {"email": "a@example.ac.th", "first_name": "เอ", "last_name": "หนึ่ง", "student_id": "7001"},
@@ -422,6 +439,8 @@ class ApiAndPermissionTests(BaseTestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data["created"], 1)
         self.assertEqual(resp.data["skipped"], 2)
+        self.assertEqual(len([m for m in mail.outbox if "a@example.ac.th" in m.to]), 1)
+        self.assertEqual(len([m for m in mail.outbox if "new@example.ac.th" in m.to]), 1)  # คนซ้ำไม่ถูกส่งซ้ำ
 
     def test_dashboard_summary_counts(self):
         booking = self.book(self.student)
