@@ -243,4 +243,13 @@ def notify_accounts_created_background(users, base_url):
         finally:
             connection.close()
 
+    # ตอนรันเทสต์ Django จะสลับ EMAIL_BACKEND เป็น locmem — ส่งแบบปกติ (ไม่ใช้ thread) เพื่อให้ใช้ transaction เดียวกับเทสต์
+    if settings.EMAIL_BACKEND == "django.core.mail.backends.locmem.EmailBackend":
+        for u in users:
+            try:
+                notify_account_created(u, base_url)
+            except Exception:
+                _logger.exception("ส่งอีเมลต้อนรับไม่สำเร็จ: %s", getattr(u, "email", "?"))
+        return
+
     threading.Thread(target=worker, daemon=True).start()
