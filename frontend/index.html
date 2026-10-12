@@ -2,53 +2,198 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ศูนย์ยืม-คืนอุปกรณ์ไอที</title>
 <link rel="icon" href="assets/img/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="assets/css/style.css">
+
+<!--
+  ===== Responsive overrides =====
+  เพิ่มเติมเฉพาะ "พฤติกรรมตอบสนองหน้าจอ" ของส่วนที่พึ่งคลาสกำหนดเอง
+  (category-rail / category-card / timeline / mobile-menu) โดยไม่ไปแตะ
+  โทนสี/ธีมหลักที่ประกาศไว้ใน assets/css/style.css — วางไว้หลังไฟล์นั้น
+  เพื่อให้ override ได้ถูกต้องตามลำดับ cascade
+-->
+<style>
+  html{
+    scroll-behavior:smooth;
+  }
+  body{
+    overflow-x:hidden; /* กันเคสการ์ดตกแต่งที่หมุน/ยื่นออกทำให้เกิด scroll แนวนอนบนมือถือ */
+  }
+  /* ชดเชยความสูงของ Navbar แบบ sticky เวลากดลิงก์ #หมวดหมู่ ฯลฯ ไม่ให้หัวข้อโดนบัง */
+  section[id]{
+    scroll-margin-top: 4.25rem;
+  }
+
+  /* ----- แถบอุปกรณ์: เลื่อนแนวนอนแบบ snap บนมือถือ/แท็บเล็ต แล้วเปลี่ยนเป็นกริดบนจอใหญ่ ----- */
+  .category-rail{
+    display:flex;
+    gap:1rem;
+    overflow-x:auto;
+    padding-bottom:.5rem;
+    margin:0 -1.25rem;
+    padding-left:1.25rem;
+    padding-right:1.25rem;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
+  }
+  .category-rail .category-card{
+    flex:0 0 auto;
+    width:72%;
+    scroll-snap-align:start;
+  }
+  @media (min-width:480px){
+    .category-rail .category-card{ width:48%; }
+  }
+  @media (min-width:768px){
+    .category-rail{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      overflow:visible;
+      margin:0;
+      padding:0;
+    }
+    .category-rail .category-card{ width:auto; }
+  }
+  @media (min-width:1024px){
+    .category-rail{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+  }
+
+  /* ----- ขั้นตอนการใช้งาน: เส้นเชื่อมแนวตั้งบนมือถือ → แนวนอนบนจอกว้าง ----- */
+  .timeline{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:2rem;
+    position:relative;
+  }
+  .timeline-step{
+    position:relative;
+    padding-left:3.25rem;
+  }
+  .timeline-step:not(:last-child)::after{
+    content:"";
+    position:absolute;
+    left:1.1rem;
+    top:2.5rem;
+    bottom:-2rem;
+    width:2px;
+    background:var(--line,#e5e7eb);
+  }
+  .timeline-num{
+    position:absolute;
+    left:0;
+    top:0;
+    width:2.25rem;
+    height:2.25rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:9999px;
+    background:var(--navy,#1e2a52);
+    color:#fff;
+    font-weight:600;
+    font-family:"Kanit",sans-serif;
+    flex-shrink:0;
+  }
+  @media (min-width:768px){
+    .timeline{
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:1.75rem;
+    }
+    .timeline-step{ padding-left:0; padding-top:3.25rem; }
+    .timeline-num{ left:0; top:0; }
+    .timeline-step:not(:last-child)::after{
+      left:2.5rem;
+      right:-1.75rem;
+      top:1.1rem;
+      bottom:auto;
+      width:auto;
+      height:2px;
+    }
+  }
+
+  /* ----- เมนูมือถือ ----- */
+  #mobile-menu{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .25s ease;
+  }
+  #mobile-menu.open{ max-height:20rem; }
+  .hamburger-line{ transition:transform .2s ease, opacity .2s ease; }
+  #menu-toggle[aria-expanded="true"] .line-1{ transform:translateY(6px) rotate(45deg); }
+  #menu-toggle[aria-expanded="true"] .line-2{ opacity:0; }
+  #menu-toggle[aria-expanded="true"] .line-3{ transform:translateY(-6px) rotate(-45deg); }
+
+  /* พื้นที่แตะอย่างน้อย 44px ตามแนวทาง accessibility บนทุกปุ่ม/ลิงก์หลัก */
+  .btn, #menu-toggle, .faq-item summary{ min-height:44px; }
+</style>
 </head>
 <body class="antialiased">
 
 <!-- ===== Navbar ===== -->
 <header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-[var(--line)]">
-  <div class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
-    <a href="index.html" class="flex items-center gap-2.5">
-      <img src="assets/img/logo.png" alt="โลโก้ศูนย์ยืม-คืนอุปกรณ์ไอที" class="brand-logo">
-      <span class="font-display font-semibold text-[var(--navy)] text-lg leading-tight">ศูนย์ยืม-คืน<br class="hidden sm:block">อุปกรณ์ไอที</span>
+  <div class="max-w-6xl mx-auto px-4 sm:px-5 h-16 flex items-center justify-between gap-3">
+    <a href="index.html" class="flex items-center gap-2.5 min-w-0">
+      <img src="assets/img/logo.png" alt="โลโก้ศูนย์ยืม-คืนอุปกรณ์ไอที" class="brand-logo shrink-0">
+      <span class="font-display font-semibold text-[var(--navy)] text-base sm:text-lg leading-tight truncate">ศูนย์ยืม-คืน<br class="hidden sm:block">อุปกรณ์ไอที</span>
     </a>
+
     <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-[var(--ink)]">
       <a href="#หมวดหมู่" class="hover:text-[var(--navy)]">อุปกรณ์ให้ยืม</a>
       <a href="#ขั้นตอน" class="hover:text-[var(--navy)]">ขั้นตอนการใช้งาน</a>
       <a href="#จุดเด่น" class="hover:text-[var(--navy)]">จุดเด่นของระบบ</a>
       <a href="#คำถาม" class="hover:text-[var(--navy)]">คำถามที่พบบ่อย</a>
     </nav>
-    <a href="login.html" class="btn btn-primary !py-2 !px-5 text-sm">เข้าสู่ระบบ</a>
+
+    <div class="flex items-center gap-2 sm:gap-3">
+      <a href="login.html" class="btn btn-primary !py-2 !px-4 sm:!px-5 text-sm whitespace-nowrap">เข้าสู่ระบบ</a>
+      <!-- ปุ่มแฮมเบอร์เกอร์: แสดงเฉพาะจอเล็กกว่า md -->
+      <button id="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu"
+        class="md:hidden shrink-0 w-10 h-10 flex flex-col items-center justify-center gap-[5px] rounded-lg border border-[var(--line)]">
+        <span class="hamburger-line line-1 block w-5 h-[2px] bg-[var(--navy)]"></span>
+        <span class="hamburger-line line-2 block w-5 h-[2px] bg-[var(--navy)]"></span>
+        <span class="hamburger-line line-3 block w-5 h-[2px] bg-[var(--navy)]"></span>
+        <span class="sr-only">เปิด/ปิดเมนู</span>
+      </button>
+    </div>
   </div>
+
+  <!-- เมนูมือถือแบบพับ -->
+  <nav id="mobile-menu" class="md:hidden border-t border-[var(--line)] bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-5 py-2 flex flex-col text-sm font-medium text-[var(--ink)]">
+      <a href="#หมวดหมู่" class="py-3 border-b border-[var(--line)]/60">อุปกรณ์ให้ยืม</a>
+      <a href="#ขั้นตอน" class="py-3 border-b border-[var(--line)]/60">ขั้นตอนการใช้งาน</a>
+      <a href="#จุดเด่น" class="py-3 border-b border-[var(--line)]/60">จุดเด่นของระบบ</a>
+      <a href="#คำถาม" class="py-3">คำถามที่พบบ่อย</a>
+    </div>
+  </nav>
 </header>
 
 <!-- ===== Hero ===== -->
 <section class="relative overflow-hidden" style="background: linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 100%);">
-  <div class="max-w-6xl mx-auto px-5 py-20 md:py-28 grid md:grid-cols-2 gap-12 items-center relative z-10">
+  <div class="max-w-6xl mx-auto px-4 sm:px-5 py-14 sm:py-20 md:py-28 grid md:grid-cols-2 gap-10 md:gap-12 items-center relative z-10">
     <div class="text-white">
       <p class="text-[var(--amber)] font-display font-medium mb-4 text-sm tracking-wide">สำหรับนักศึกษาและเจ้าหน้าที่ในวิทยาลัย</p>
-      <h1 class="font-display font-semibold text-4xl md:text-5xl leading-tight mb-6">
+      <h1 class="font-display font-semibold text-3xl sm:text-4xl md:text-5xl leading-tight mb-5 sm:mb-6">
         ยืมอุปกรณ์ไอที<br>ของวิทยาลัย ง่ายกว่าที่คิด
       </h1>
-      <p class="text-white/75 text-lg leading-relaxed mb-8 max-w-md">
+      <p class="text-white/75 text-base sm:text-lg leading-relaxed mb-7 sm:mb-8 max-w-md">
         จองโน้ตบุ๊ก กล้อง หรืออุปกรณ์ที่ต้องใช้ล่วงหน้าผ่านระบบออนไลน์
         เช็คได้ทันทีว่าเหลือกี่เครื่อง ไม่ต้องเดินไปถามหน้าเคาน์เตอร์ให้เสียเวลา
       </p>
-      <div class="flex flex-wrap gap-4">
-        <a href="login.html" class="btn btn-primary">เข้าสู่ระบบเพื่อจองอุปกรณ์</a>
-        <a href="#ขั้นตอน" class="btn btn-ghost">ดูขั้นตอนการใช้งาน</a>
+      <div class="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
+        <a href="login.html" class="btn btn-primary text-center">เข้าสู่ระบบเพื่อจองอุปกรณ์</a>
+        <a href="#ขั้นตอน" class="btn btn-ghost text-center">ดูขั้นตอนการใช้งาน</a>
       </div>
     </div>
 
-    <!-- ภาพประกอบ: การ์ดอุปกรณ์ลอยเป็นชั้น ๆ -->
-    <div class="relative h-72 md:h-96 hidden sm:block" aria-hidden="true">
+    <!-- ภาพประกอบบนจอใหญ่ (md ขึ้นไป): การ์ดลอยเป็นชั้น ๆ แบบเดิม -->
+    <div class="relative h-80 lg:h-96 hidden md:block" aria-hidden="true">
       <div class="absolute right-4 top-2 w-48 surface rounded-2xl p-4 shadow-xl rotate-[-4deg]">
         <svg viewBox="0 0 48 48" class="w-9 h-9 mb-2" fill="none" stroke="var(--navy)" stroke-width="2.2"><rect x="6" y="9" width="36" height="24" rx="2"/><path d="M2 37h44l-3 4H5z" fill="var(--navy)" stroke="none"/></svg>
         <p class="font-display font-medium text-sm text-[var(--ink)]">โน้ตบุ๊ก Dell</p>
@@ -65,12 +210,31 @@
         <span class="badge badge-awaiting mt-2">เหลือน้อย</span>
       </div>
     </div>
+
+    <!-- ภาพประกอบบนมือถือ/แท็บเล็ต (ต่ำกว่า md): การ์ดเรียงแถวเรียบ ๆ ไม่ซ้อนทับกัน -->
+    <div class="grid grid-cols-3 gap-3 md:hidden" aria-hidden="true">
+      <div class="surface rounded-xl p-3">
+        <svg viewBox="0 0 48 48" class="w-7 h-7 mb-1.5" fill="none" stroke="var(--navy)" stroke-width="2.2"><rect x="6" y="9" width="36" height="24" rx="2"/><path d="M2 37h44l-3 4H5z" fill="var(--navy)" stroke="none"/></svg>
+        <p class="font-display font-medium text-xs text-[var(--ink)] leading-snug">โน้ตบุ๊ก</p>
+        <span class="badge badge-available mt-1.5 text-[11px]">4/6</span>
+      </div>
+      <div class="surface rounded-xl p-3">
+        <svg viewBox="0 0 48 48" class="w-7 h-7 mb-1.5" fill="none" stroke="var(--teal)" stroke-width="2.2"><rect x="8" y="14" width="28" height="20" rx="3"/><circle cx="22" cy="24" r="6"/><rect x="17" y="8" width="10" height="7" rx="2"/></svg>
+        <p class="font-display font-medium text-xs text-[var(--ink)] leading-snug">กล้องวิดีโอ</p>
+        <span class="badge badge-available mt-1.5 text-[11px]">2/3</span>
+      </div>
+      <div class="surface rounded-xl p-3">
+        <svg viewBox="0 0 48 48" class="w-7 h-7 mb-1.5" fill="none" stroke="var(--amber-dark)" stroke-width="2.2"><rect x="14" y="6" width="20" height="30" rx="3"/><circle cx="24" cy="32" r="1.5" fill="var(--amber-dark)" stroke="none"/></svg>
+        <p class="font-display font-medium text-xs text-[var(--ink)] leading-snug">แท็บเล็ต</p>
+        <span class="badge badge-awaiting mt-1.5 text-[11px]">เหลือน้อย</span>
+      </div>
+    </div>
   </div>
 </section>
 
 <!-- ===== แถบจุดเด่นสั้น ๆ ===== -->
 <section class="bg-[var(--navy-dark)] text-white">
-  <div class="max-w-6xl mx-auto px-5 py-8 grid sm:grid-cols-3 gap-6 text-sm">
+  <div class="max-w-6xl mx-auto px-4 sm:px-5 py-7 sm:py-8 grid sm:grid-cols-3 gap-5 sm:gap-6 text-sm">
     <div class="flex items-start gap-3">
       <svg class="w-6 h-6 text-[var(--amber)] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
       <p class="text-white/85">จองล่วงหน้าได้ตลอด 24 ชั่วโมง ผ่านมือถือหรือคอมพิวเตอร์</p>
@@ -87,24 +251,25 @@
 </section>
 
 <!-- ===== หมวดหมู่อุปกรณ์ ===== -->
-<section id="หมวดหมู่" class="max-w-6xl mx-auto px-5 py-20">
-  <div class="flex items-end justify-between mb-8 flex-wrap gap-2">
+<section id="หมวดหมู่" class="max-w-6xl mx-auto px-4 sm:px-5 py-14 sm:py-20">
+  <div class="flex items-end justify-between mb-6 sm:mb-8 flex-wrap gap-2">
     <div>
-      <h2 class="font-display font-semibold text-2xl md:text-3xl text-[var(--navy)]">อุปกรณ์ที่ให้ยืม</h2>
-      <p class="text-[var(--ink)]/60 mt-1">จำนวนคงเหลือแบบเรียลไทม์จากระบบจริง — เข้าสู่ระบบเพื่อจองได้ทันที</p>
+      <h2 class="font-display font-semibold text-xl sm:text-2xl md:text-3xl text-[var(--navy)]">อุปกรณ์ที่ให้ยืม</h2>
+      <p class="text-[var(--ink)]/60 mt-1 text-sm sm:text-base">จำนวนคงเหลือแบบเรียลไทม์จากระบบจริง — เข้าสู่ระบบเพื่อจองได้ทันที</p>
     </div>
   </div>
   <div id="equipment-rail" class="category-rail">
     <!-- โหลดจาก /api/public/equipment/ ด้วย JS ด้านล่าง (ไม่ต้องล็อกอิน) -->
     <p class="text-sm text-[var(--ink)]/40 py-8">กำลังโหลดรายการอุปกรณ์...</p>
   </div>
+  <p class="text-xs text-[var(--ink)]/40 mt-2 md:hidden">ปัดซ้าย-ขวาเพื่อดูอุปกรณ์เพิ่มเติม →</p>
 </section>
 
 <!-- ===== ขั้นตอนการใช้งาน ===== -->
 <section id="ขั้นตอน" class="bg-white border-y border-[var(--line)]">
-  <div class="max-w-6xl mx-auto px-5 py-20">
-    <h2 class="font-display font-semibold text-2xl md:text-3xl text-[var(--navy)] mb-2">ใช้งานยังไง</h2>
-    <p class="text-[var(--ink)]/60 mb-12 max-w-xl">4 ขั้นตอนตั้งแต่จองจนคืนของ ไม่มีอะไรซับซ้อน</p>
+  <div class="max-w-6xl mx-auto px-4 sm:px-5 py-14 sm:py-20">
+    <h2 class="font-display font-semibold text-xl sm:text-2xl md:text-3xl text-[var(--navy)] mb-2">ใช้งานยังไง</h2>
+    <p class="text-[var(--ink)]/60 mb-10 sm:mb-12 max-w-xl text-sm sm:text-base">4 ขั้นตอนตั้งแต่จองจนคืนของ ไม่มีอะไรซับซ้อน</p>
 
     <div class="timeline">
       <div class="timeline-step">
@@ -132,27 +297,27 @@
 </section>
 
 <!-- ===== จุดเด่นของระบบ ===== -->
-<section id="จุดเด่น" class="max-w-6xl mx-auto px-5 py-20">
-  <h2 class="font-display font-semibold text-2xl md:text-3xl text-[var(--navy)] mb-2">จุดเด่นของระบบ</h2>
-  <p class="text-[var(--ink)]/60 mb-12 max-w-xl">ออกแบบมาให้ทั้งนักศึกษาและเจ้าหน้าที่ทำงานง่ายขึ้นจริง ไม่ใช่แค่ย้ายกระดาษไปออนไลน์</p>
+<section id="จุดเด่น" class="max-w-6xl mx-auto px-4 sm:px-5 py-14 sm:py-20">
+  <h2 class="font-display font-semibold text-xl sm:text-2xl md:text-3xl text-[var(--navy)] mb-2">จุดเด่นของระบบ</h2>
+  <p class="text-[var(--ink)]/60 mb-10 sm:mb-12 max-w-xl text-sm sm:text-base">ออกแบบมาให้ทั้งนักศึกษาและเจ้าหน้าที่ทำงานง่ายขึ้นจริง ไม่ใช่แค่ย้ายกระดาษไปออนไลน์</p>
 
-  <div class="grid md:grid-cols-3 gap-5">
-    <div class="surface rounded-2xl p-7 md:col-span-2 md:row-span-1 bg-[var(--navy)] text-white">
-      <svg class="w-10 h-10 text-[var(--amber)] mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
-      <h3 class="font-display font-medium text-lg mb-2">จำนวนคงเหลือแบบเรียลไทม์</h3>
+  <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
+    <div class="surface rounded-2xl p-5 sm:p-7 sm:col-span-2 md:col-span-2 bg-[var(--navy)] text-white">
+      <svg class="w-9 h-9 sm:w-10 sm:h-10 text-[var(--amber)] mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+      <h3 class="font-display font-medium text-base sm:text-lg mb-2">จำนวนคงเหลือแบบเรียลไทม์</h3>
       <p class="text-white/75 text-sm leading-relaxed max-w-md">ทุกครั้งที่มีคนจอง ระบบจะกันซ้อนอัตโนมัติ คุณจึงเห็นตัวเลขที่เป็นจริงเสมอ ไม่ใช่ของหมดไปแล้วแต่หน้าจอยังโชว์ว่ามี</p>
     </div>
-    <div class="surface rounded-2xl p-7">
+    <div class="surface rounded-2xl p-5 sm:p-7">
       <svg class="w-9 h-9 text-[var(--teal)] mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
       <h3 class="font-display font-medium mb-2">แจ้งเตือนก่อนครบกำหนด</h3>
       <p class="text-[var(--ink)]/65 text-sm leading-relaxed">ระบบส่งอีเมลเตือนล่วงหน้า ก่อนถึงวันคืนและกรณีเกินกำหนดแล้ว</p>
     </div>
-    <div class="surface rounded-2xl p-7">
+    <div class="surface rounded-2xl p-5 sm:p-7">
       <svg class="w-9 h-9 text-[var(--amber-dark)] mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16M6 15V9M12 15V5M18 15v-3"/></svg>
       <h3 class="font-display font-medium mb-2">ดูประวัติการยืมย้อนหลัง</h3>
       <p class="text-[var(--ink)]/65 text-sm leading-relaxed">ทุกครั้งที่ยืม-คืน ถูกบันทึกไว้ ดูย้อนหลังได้ตลอดเวลาในหน้าโปรไฟล์</p>
     </div>
-    <div class="surface rounded-2xl p-7 md:col-span-2 bg-[var(--paper)]">
+    <div class="surface rounded-2xl p-5 sm:p-7 sm:col-span-2 md:col-span-2 bg-[var(--paper)]">
       <svg class="w-9 h-9 text-[var(--navy)] mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/></svg>
       <h3 class="font-display font-medium mb-2">ยืนยันโดยเจ้าหน้าที่ทุกครั้ง</h3>
       <p class="text-[var(--ink)]/65 text-sm leading-relaxed max-w-md">การรับและคืนอุปกรณ์ต้องผ่านการตรวจสอบและกดยืนยันจากเจ้าหน้าที่เสมอ แม้จะมีรหัสการจองแล้วก็ตาม เพื่อป้องกันการสวมรอยหรือส่งต่อรหัสให้คนอื่น</p>
@@ -162,42 +327,42 @@
 
 <!-- ===== คำถามที่พบบ่อย ===== -->
 <section id="คำถาม" class="bg-white border-y border-[var(--line)]">
-  <div class="max-w-3xl mx-auto px-5 py-20">
-    <h2 class="font-display font-semibold text-2xl md:text-3xl text-[var(--navy)] mb-8">คำถามที่พบบ่อย</h2>
+  <div class="max-w-3xl mx-auto px-4 sm:px-5 py-14 sm:py-20">
+    <h2 class="font-display font-semibold text-xl sm:text-2xl md:text-3xl text-[var(--navy)] mb-6 sm:mb-8">คำถามที่พบบ่อย</h2>
 
     <div class="space-y-3">
-      <details class="faq-item surface rounded-xl p-5" open>
-        <summary class="flex items-center justify-between font-display font-medium">
-          ใครยืมอุปกรณ์ผ่านระบบนี้ได้บ้าง
-          <span class="faq-icon text-[var(--navy)] text-xl">+</span>
+      <details class="faq-item surface rounded-xl p-4 sm:p-5" open>
+        <summary class="flex items-center justify-between gap-3 font-display font-medium cursor-pointer">
+          <span>ใครยืมอุปกรณ์ผ่านระบบนี้ได้บ้าง</span>
+          <span class="faq-icon text-[var(--navy)] text-xl shrink-0">+</span>
         </summary>
         <p class="text-sm text-[var(--ink)]/70 mt-3 leading-relaxed">นักศึกษาที่มีบัญชีในระบบและไม่ได้ถูกพักสิทธิ์การจองอยู่ สามารถเข้าสู่ระบบและจองอุปกรณ์ได้ทันที</p>
       </details>
-      <details class="faq-item surface rounded-xl p-5">
-        <summary class="flex items-center justify-between font-display font-medium">
-          จองแล้วต้องมารับของภายในกี่วัน
-          <span class="faq-icon text-[var(--navy)] text-xl">+</span>
+      <details class="faq-item surface rounded-xl p-4 sm:p-5">
+        <summary class="flex items-center justify-between gap-3 font-display font-medium cursor-pointer">
+          <span>จองแล้วต้องมารับของภายในกี่วัน</span>
+          <span class="faq-icon text-[var(--navy)] text-xl shrink-0">+</span>
         </summary>
         <p class="text-sm text-[var(--ink)]/70 mt-3 leading-relaxed">ระบบจะกำหนดเวลาหมดอายุการจองไว้ให้ (ดูได้ในหน้ารายละเอียดการจองของคุณ) ถ้าไม่มารับภายในเวลานั้น ระบบจะยกเลิกอัตโนมัติและคืนอุปกรณ์ให้คนอื่นจองต่อ</p>
       </details>
-      <details class="faq-item surface rounded-xl p-5">
-        <summary class="flex items-center justify-between font-display font-medium">
-          ถ้าคืนอุปกรณ์ช้ากว่ากำหนด จะเป็นอะไรไหม
-          <span class="faq-icon text-[var(--navy)] text-xl">+</span>
+      <details class="faq-item surface rounded-xl p-4 sm:p-5">
+        <summary class="flex items-center justify-between gap-3 font-display font-medium cursor-pointer">
+          <span>ถ้าคืนอุปกรณ์ช้ากว่ากำหนด จะเป็นอะไรไหม</span>
+          <span class="faq-icon text-[var(--navy)] text-xl shrink-0">+</span>
         </summary>
         <p class="text-sm text-[var(--ink)]/70 mt-3 leading-relaxed">ถ้าคืนเกินกำหนดตามเกณฑ์ที่วิทยาลัยตั้งไว้ บัญชีของคุณจะถูกพักสิทธิ์การจองอุปกรณ์ใหม่ชั่วคราว โดยระบบจะปลดล็อกให้อัตโนมัติเมื่อครบกำหนด (ไม่กระทบการเข้าสู่ระบบหรือดูประวัติเดิม)</p>
       </details>
-      <details class="faq-item surface rounded-xl p-5">
-        <summary class="flex items-center justify-between font-display font-medium">
-          ยกเลิกการจองที่ทำไว้ได้ไหม
-          <span class="faq-icon text-[var(--navy)] text-xl">+</span>
+      <details class="faq-item surface rounded-xl p-4 sm:p-5">
+        <summary class="flex items-center justify-between gap-3 font-display font-medium cursor-pointer">
+          <span>ยกเลิกการจองที่ทำไว้ได้ไหม</span>
+          <span class="faq-icon text-[var(--navy)] text-xl shrink-0">+</span>
         </summary>
         <p class="text-sm text-[var(--ink)]/70 mt-3 leading-relaxed">ได้ ตราบใดที่ยังไม่ได้ไปรับอุปกรณ์จริง คุณสามารถกดยกเลิกได้เองในหน้า "ประวัติการยืมของฉัน"</p>
       </details>
-      <details class="faq-item surface rounded-xl p-5">
-        <summary class="flex items-center justify-between font-display font-medium">
-          ลืมรหัสผ่านต้องทำยังไง
-          <span class="faq-icon text-[var(--navy)] text-xl">+</span>
+      <details class="faq-item surface rounded-xl p-4 sm:p-5">
+        <summary class="flex items-center justify-between gap-3 font-display font-medium cursor-pointer">
+          <span>ลืมรหัสผ่านต้องทำยังไง</span>
+          <span class="faq-icon text-[var(--navy)] text-xl shrink-0">+</span>
         </summary>
         <p class="text-sm text-[var(--ink)]/70 mt-3 leading-relaxed">กดลิงก์ "ลืมรหัสผ่าน" ที่หน้าเข้าสู่ระบบ กรอกอีเมลที่ใช้ลงทะเบียนไว้ ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้ทางอีเมล</p>
       </details>
@@ -207,19 +372,19 @@
 
 <!-- ===== CTA ปิดท้าย ===== -->
 <section style="background: linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 100%);">
-  <div class="max-w-4xl mx-auto px-5 py-16 text-center">
-    <h2 class="font-display font-semibold text-2xl md:text-3xl text-white mb-3">พร้อมยืมอุปกรณ์แล้วหรือยัง</h2>
-    <p class="text-white/70 mb-8">เข้าสู่ระบบด้วยบัญชีของคุณ แล้วเริ่มจองได้ทันที</p>
-    <a href="login.html" class="btn btn-primary">เข้าสู่ระบบ</a>
+  <div class="max-w-4xl mx-auto px-4 sm:px-5 py-12 sm:py-16 text-center">
+    <h2 class="font-display font-semibold text-xl sm:text-2xl md:text-3xl text-white mb-3">พร้อมยืมอุปกรณ์แล้วหรือยัง</h2>
+    <p class="text-white/70 mb-8 text-sm sm:text-base">เข้าสู่ระบบด้วยบัญชีของคุณ แล้วเริ่มจองได้ทันที</p>
+    <a href="login.html" class="btn btn-primary inline-block">เข้าสู่ระบบ</a>
   </div>
 </section>
 
 <!-- ===== Footer ===== -->
 <footer class="bg-white border-t border-[var(--line)]">
-  <div class="max-w-6xl mx-auto px-5 py-12 grid sm:grid-cols-2 md:grid-cols-4 gap-8">
-    <div>
+  <div class="max-w-6xl mx-auto px-4 sm:px-5 py-10 sm:py-12 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+    <div class="col-span-2 md:col-span-1">
       <div class="flex items-center gap-2 mb-3">
-        <img src="assets/img/logo.png" alt="โลโก้" class="brand-logo">
+        <img src="assets/img/logo.png" alt="โลโก้" class="brand-logo shrink-0">
         <span class="font-display font-semibold text-[var(--navy)]">ศูนย์ยืมคืนอุปกรณ์ไอที</span>
       </div>
       <p class="text-sm text-[var(--ink)]/60 leading-relaxed">ระบบยืม-คืนอุปกรณ์ไอทีสำหรับนักศึกษาและเจ้าหน้าที่ในวิทยาลัย</p>
@@ -239,10 +404,10 @@
     </div>
     <div>
       <h4 class="font-display font-medium mb-3 text-sm">ติดต่อเจ้าหน้าที่</h4>
-      <p class="text-sm text-[var(--ink)]/65 leading-relaxed">ห้องโสตทัศนศึกษา อาคาร 1<br>โทร. 0-0000-0000</p>
+      <p class="text-sm text-[var(--ink)]/65 leading-relaxed break-words">ห้องโสตทัศนศึกษา อาคาร 1<br>โทร. 0-0000-0000</p>
     </div>
   </div>
-  <div class="border-t border-[var(--line)] py-5 text-center text-xs text-[var(--ink)]/45">
+  <div class="border-t border-[var(--line)] py-5 text-center text-xs text-[var(--ink)]/45 px-4">
     © 2026 ศูนย์ยืม-คืนอุปกรณ์ไอที
   </div>
 </footer>
@@ -250,6 +415,30 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/api.js"></script>
 <script>
+// ===== เมนูมือถือ: เปิด/ปิด + ปิดอัตโนมัติเมื่อกดลิงก์ หรือขยายจอเกิน md =====
+(() => {
+  const toggle = document.getElementById("menu-toggle");
+  const menu = document.getElementById("mobile-menu");
+  if (!toggle || !menu) return;
+
+  const setOpen = (open) => {
+    toggle.setAttribute("aria-expanded", String(open));
+    menu.classList.toggle("open", open);
+  };
+
+  toggle.addEventListener("click", () => {
+    setOpen(toggle.getAttribute("aria-expanded") !== "true");
+  });
+
+  menu.querySelectorAll("a").forEach((a) => {
+    a.addEventListener("click", () => setOpen(false));
+  });
+
+  const mq = window.matchMedia("(min-width: 768px)");
+  const closeOnDesktop = () => { if (mq.matches) setOpen(false); };
+  mq.addEventListener ? mq.addEventListener("change", closeOnDesktop) : mq.addListener(closeOnDesktop);
+})();
+
 // โหลดรายการอุปกรณ์จริงจากระบบมาโชว์บนหน้าแรก (endpoint นี้เปิดสาธารณะ ไม่ต้องล็อกอิน)
 (async () => {
   const rail = document.getElementById("equipment-rail");
