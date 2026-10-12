@@ -131,6 +131,13 @@
 
   /* พื้นที่แตะอย่างน้อย 44px ตามแนวทาง accessibility บนทุกปุ่ม/ลิงก์หลัก */
   .btn, #menu-toggle, .faq-item summary{ min-height:44px; }
+
+  /* ปุ่ม/ลิงก์สถานะล็อกอินบน navbar: กันข้อความ "สวัสดี, ..." ยาวเกินจนดันเลย์เอาต์ */
+  #auth-link-header{
+    max-width: 11rem;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
 </style>
 </head>
 <body class="antialiased">
@@ -151,7 +158,8 @@
     </nav>
 
     <div class="flex items-center gap-2 sm:gap-3">
-      <a href="login.html" class="btn btn-primary !py-2 !px-4 sm:!px-5 text-sm whitespace-nowrap">เข้าสู่ระบบ</a>
+      <img id="navbar-avatar" alt="รูปโปรไฟล์" class="hidden w-9 h-9 rounded-full object-cover border border-[var(--line)] shrink-0">
+      <a href="login.html" id="auth-link-header" class="btn btn-primary !py-2 !px-4 sm:!px-5 text-sm whitespace-nowrap">เข้าสู่ระบบ</a>
       <!-- ปุ่มแฮมเบอร์เกอร์: แสดงเฉพาะจอเล็กกว่า md -->
       <button id="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu"
         class="md:hidden shrink-0 w-10 h-10 flex flex-col items-center justify-center gap-[5px] rounded-lg border border-[var(--line)]">
@@ -187,7 +195,7 @@
         เช็คได้ทันทีว่าเหลือกี่เครื่อง ไม่ต้องเดินไปถามหน้าเคาน์เตอร์ให้เสียเวลา
       </p>
       <div class="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
-        <a href="login.html" class="btn btn-primary text-center">เข้าสู่ระบบเพื่อจองอุปกรณ์</a>
+        <a href="login.html" id="auth-link-hero" class="btn btn-primary text-center">เข้าสู่ระบบเพื่อจองอุปกรณ์</a>
         <a href="#ขั้นตอน" class="btn btn-ghost text-center">ดูขั้นตอนการใช้งาน</a>
       </div>
     </div>
@@ -375,7 +383,7 @@
   <div class="max-w-4xl mx-auto px-4 sm:px-5 py-12 sm:py-16 text-center">
     <h2 class="font-display font-semibold text-xl sm:text-2xl md:text-3xl text-white mb-3">พร้อมยืมอุปกรณ์แล้วหรือยัง</h2>
     <p class="text-white/70 mb-8 text-sm sm:text-base">เข้าสู่ระบบด้วยบัญชีของคุณ แล้วเริ่มจองได้ทันที</p>
-    <a href="login.html" class="btn btn-primary inline-block">เข้าสู่ระบบ</a>
+    <a href="login.html" id="auth-link-cta" class="btn btn-primary inline-block">เข้าสู่ระบบ</a>
   </div>
 </section>
 
@@ -395,7 +403,7 @@
         <li><a href="#หมวดหมู่" class="hover:text-[var(--navy)]">อุปกรณ์ให้ยืม</a></li>
         <li><a href="#ขั้นตอน" class="hover:text-[var(--navy)]">ขั้นตอนการใช้งาน</a></li>
         <li><a href="#คำถาม" class="hover:text-[var(--navy)]">คำถามที่พบบ่อย</a></li>
-        <li><a href="login.html" class="hover:text-[var(--navy)]">เข้าสู่ระบบ</a></li>
+        <li><a href="login.html" id="auth-link-footer" class="hover:text-[var(--navy)]">เข้าสู่ระบบ</a></li>
       </ul>
     </div>
     <div>
@@ -415,6 +423,69 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/api.js"></script>
 <script>
+/* =====================================================================
+   สถานะล็อกอินบนหน้าแรก (public)
+   -----------------------------------------------------------------
+   หน้านี้ไม่ใช่หน้าที่ต้องล็อกอินถึงจะเข้าได้ (ไม่เรียก requireAuth())
+   จึงอ่านสถานะจาก Api.isLoggedIn() / Api.getUser() ที่เก็บไว้ใน
+   localStorage เฉย ๆ (ไม่ยิง /auth/me/ ซ้ำ) เพื่อไม่ให้ชนกับ
+   Api.handleUnauthorized() ที่จะ auto-redirect ไป login.html ทันที
+   ถ้า token หมดอายุ — ซึ่งไม่ควรเกิดขึ้นบนหน้าแรกที่ใคร ๆ ก็เข้าได้
+   ถ้า token หมดอายุจริง ระบบจะตรวจจับและเด้งให้เองตอนกดเข้า dashboard
+   (requireAuth ใน auth-guard.js จัดการอยู่แล้ว) ===================== */
+function dashboardPathFor(user) {
+  return user && user.role === "staff" ? "staff/dashboard.html" : "student/dashboard.html";
+}
+
+function applyAuthState() {
+  const loggedIn = typeof Api !== "undefined" && Api.isLoggedIn();
+  const user = loggedIn ? Api.getUser() : null;
+
+  const avatar = document.getElementById("navbar-avatar");
+  if (!loggedIn || !user) {
+    if (avatar) avatar.classList.add("hidden");
+    return; // ยังไม่ได้เข้าสู่ระบบ: คงปุ่ม/ข้อความ "เข้าสู่ระบบ" เดิมทุกจุดตามที่ HTML กำหนดไว้
+  }
+
+  const dashboardHref = dashboardPathFor(user);
+  const displayName = user.first_name || user.username || "บัญชีของฉัน";
+
+  if (avatar) {
+    if (user.profile_image) {
+      avatar.src = user.profile_image;
+      avatar.classList.remove("hidden");
+    } else {
+      avatar.classList.add("hidden");
+    }
+  }
+
+  const headerLink = document.getElementById("auth-link-header");
+  if (headerLink) {
+    headerLink.href = dashboardHref;
+    headerLink.textContent = `สวัสดี, ${displayName}`;
+  }
+
+  const heroLink = document.getElementById("auth-link-hero");
+  if (heroLink) {
+    heroLink.href = dashboardHref;
+    heroLink.textContent = "ไปที่หน้าจองอุปกรณ์ของฉัน";
+  }
+
+  const footerLink = document.getElementById("auth-link-footer");
+  if (footerLink) {
+    footerLink.href = dashboardHref;
+    footerLink.textContent = "แดชบอร์ดของฉัน";
+  }
+
+  const ctaLink = document.getElementById("auth-link-cta");
+  if (ctaLink) {
+    ctaLink.href = dashboardHref;
+    ctaLink.textContent = "ไปที่แดชบอร์ดของฉัน";
+  }
+}
+
+applyAuthState();
+
 // ===== เมนูมือถือ: เปิด/ปิด + ปิดอัตโนมัติเมื่อกดลิงก์ หรือขยายจอเกิน md =====
 (() => {
   const toggle = document.getElementById("menu-toggle");
