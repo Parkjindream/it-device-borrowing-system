@@ -685,7 +685,9 @@ class StaffStudentListCreateView(APIView):
             qs = qs.filter(is_suspended=True).filter(
                 Q(suspended_until__isnull=True) | Q(suspended_until__gt=timezone.localdate())
             )
-        return Response(StaffStudentSerializer(qs[:200], many=True).data)
+        # เพิ่ม context ให้ serializer เพื่อให้ profile_image ออกมาเป็น absolute URL (ไม่งั้นรูปในหน้า
+        # "จัดการนักศึกษา" จะได้แค่ path แบบ relative เช่น /media/avatars/x.jpg ซึ่ง <img src="..."> เปิดไม่ขึ้น)
+        return Response(StaffStudentSerializer(qs[:200], many=True, context={"request": request}).data)
 
     def post(self, request):
         serializer = StudentCreateSerializer(data=request.data)
@@ -693,7 +695,10 @@ class StaffStudentListCreateView(APIView):
         user = serializer.save()
         # แจ้งทางอีเมลว่าถูกเพิ่มเข้าระบบ พร้อมลิงก์ให้ตั้งรหัสผ่านเอง
         notify_accounts_created_background([user], build_frontend_base_url(request))
-        return Response(StaffStudentSerializer(user).data, status=status.HTTP_201_CREATED)
+        return Response(
+            StaffStudentSerializer(user, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class StaffStudentDetailView(APIView):
@@ -721,7 +726,7 @@ class StaffStudentDetailView(APIView):
         for field, value in data.items():
             setattr(student, field, value.strip() if isinstance(value, str) else value)
         student.save(update_fields=list(data.keys()) if data else ["id"])
-        return Response(StaffStudentSerializer(student).data)
+        return Response(StaffStudentSerializer(student, context={"request": request}).data)
 
 
 class StaffStudentImportView(APIView):
@@ -778,7 +783,7 @@ class StaffUnsuspendStudentView(APIView):
     def post(self, request, pk):
         student = get_object_or_404(User, pk=pk, role=User.Role.STUDENT)
         student = unsuspend_student(student)
-        return Response(StaffStudentSerializer(student).data)
+        return Response(StaffStudentSerializer(student, context={"request": request}).data)
 
 
 class StaffNotificationListView(generics.ListAPIView):
