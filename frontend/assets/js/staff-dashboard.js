@@ -1,12 +1,15 @@
 let pendingConfirmAction = null; // { bookingId, type: "pickup" | "return" }
+let currentStaff = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const staff = await requireAuth("staff");
   if (!staff) return;
+  currentStaff = staff;
 
   document.getElementById("welcome-text").textContent = `เจ้าหน้าที่: ${staff.first_name || staff.username}`;
   document.getElementById("logout-btn").addEventListener("click", logout);
 
+  updateNavbarAvatar();
   setupTabs();
   setupLookup();
   setupConfirmModal();
@@ -15,6 +18,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupPenaltySettings();
   setupCategoryManagement();
   setupClearData();
+  setupProfileModal();
 
   document.getElementById("status-filter").addEventListener("change", loadQueue);
   await loadSummary();
@@ -104,11 +108,22 @@ async function loadQueue() {
   data.forEach((booking) => list.appendChild(renderQueueRow(booking, false)));
 }
 
-function renderQueueRow(booking) {
+/**
+ * การ์ดแถวเดียวในคิวรับ-คืน
+ * isLookupResult = true เมื่อเป็นผลลัพธ์จากช่องค้นหารหัสการจอง (เน้นกรอบให้ต่างจากรายการปกติ)
+ *
+ * รูปนักศึกษา: backend อาจยังไม่ได้ส่ง field รูปมาด้วยก็ได้ (เดิมไม่มี) จึงลองอ่านจากหลายชื่อ field
+ * ที่เป็นไปได้ (student_profile_image ตรง ๆ หรือซ้อนอยู่ใน booking.student.profile_image) ถ้าไม่มี
+ * เลยจะโชว์ไอคอนคนเปล่า ๆ แทน ไม่พังแม้ backend ยังไม่รองรับฟิลด์นี้
+ */
+function renderQueueRow(booking, isLookupResult = false) {
   const row = document.createElement("div");
-  row.className = "surface rounded-xl p-4 flex flex-wrap items-center justify-between gap-3";
+  row.className = `surface rounded-xl p-4 flex flex-wrap items-center justify-between gap-3${
+    isLookupResult ? " ring-2 ring-[var(--navy)] ring-offset-2" : ""
+  }`;
 
   const statusInfo = getBookingStatusDisplay(booking);
+  const studentPhoto = booking.student_profile_image || (booking.student && booking.student.profile_image) || "";
 
   let actionHtml = "";
   if (booking.status === "awaiting_pickup") {
@@ -119,15 +134,24 @@ function renderQueueRow(booking) {
     actionHtml = `<button class="btn btn-outline-navy !py-1.5 !px-3 text-xs delete-booking-btn" style="color:#c33c3c;border-color:#c33c3c;">ลบ</button>`;
   }
 
+  const studentAvatarHtml = studentPhoto
+    ? `<img src="${studentPhoto}" alt="รูปนักศึกษา" class="w-5 h-5 rounded-full object-cover border border-[var(--line)] shrink-0">`
+    : `<span class="w-5 h-5 rounded-full flex items-center justify-center bg-[var(--paper)] border border-[var(--line)] shrink-0">
+         <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.5" opacity="0.4"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+       </span>`;
+
   row.innerHTML = `
     <div class="flex items-center gap-3 min-w-0">
-      <img src="${booking.equipment_image || fallbackEquipmentImage(booking.equipment_name)}" alt="${booking.equipment_name}"
+      <img src="${booking.equipment_image || fallbackEquipmentImage(booking.equipment_name)}" alt="${escapeHtml(booking.equipment_name)}"
         class="w-12 h-12 rounded-lg object-contain bg-[var(--paper)] p-1 shrink-0">
       <div class="min-w-0">
-        <p class="font-display font-medium text-sm truncate">${booking.equipment_name} <span class="text-[var(--ink)]/40">·</span> ${booking.unit_serial_number}</p>
-        <p class="text-xs text-[var(--ink)]/55 mt-0.5">
-          ${escapeHtml(booking.student_name || "-")} (${escapeHtml(booking.student_id || "-")}) · รหัส ${booking.booking_code}
-        </p>
+        <p class="font-display font-medium text-sm truncate">${escapeHtml(booking.equipment_name)} <span class="text-[var(--ink)]/40">·</span> ${escapeHtml(booking.unit_serial_number)}</p>
+        <div class="flex items-center gap-1.5 mt-0.5">
+          ${studentAvatarHtml}
+          <p class="text-xs text-[var(--ink)]/55 truncate">
+            ${escapeHtml(booking.student_name || "-")} (${escapeHtml(booking.student_id || "-")}) · รหัส ${escapeHtml(booking.booking_code)}
+          </p>
+        </div>
         <p class="text-xs text-[var(--ink)]/55 mt-0.5">กำหนดคืน ${formatDate(booking.requested_end_date)}</p>
       </div>
     </div>
@@ -223,10 +247,10 @@ async function loadInventory() {
     row.className = "surface rounded-xl p-4 flex flex-wrap items-center justify-between gap-3";
     row.innerHTML = `
       <div class="flex items-center gap-3 min-w-0">
-        <img src="${equipmentImageSrc(eq)}" alt="${eq.name}" class="w-12 h-12 rounded-lg object-contain bg-[var(--paper)] p-1 shrink-0">
+        <img src="${equipmentImageSrc(eq)}" alt="${escapeHtml(eq.name)}" class="w-12 h-12 rounded-lg object-contain bg-[var(--paper)] p-1 shrink-0">
         <div class="min-w-0">
-          <p class="font-display font-medium text-sm truncate">${eq.name} ${eq.is_active ? "" : '<span class="text-xs text-[#c33c3c]">(ปิดใช้งาน)</span>'}</p>
-          <p class="text-xs text-[var(--ink)]/55 mt-0.5">${eq.category?.name ?? ""} · เหลือ ${eq.available_units}/${eq.total_units} เครื่อง</p>
+          <p class="font-display font-medium text-sm truncate">${escapeHtml(eq.name)} ${eq.is_active ? "" : '<span class="text-xs text-[#c33c3c]">(ปิดใช้งาน)</span>'}</p>
+          <p class="text-xs text-[var(--ink)]/55 mt-0.5">${escapeHtml(eq.category?.name ?? "")} · เหลือ ${eq.available_units}/${eq.total_units} เครื่อง</p>
         </div>
       </div>
         <div class="flex gap-2 flex-wrap">
@@ -501,12 +525,19 @@ async function loadStudentList() {
 
   list.innerHTML = data.map((s) => `
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--line)] px-4 py-3">
-      <div>
-        <p class="text-sm font-medium">${escapeHtml(s.first_name)} ${escapeHtml(s.last_name)} <span class="text-[var(--ink)]/40">·</span> ${escapeHtml(s.email)}</p>
-        <p class="text-xs text-[var(--ink)]/55 mt-0.5">
-          รหัสนักศึกษา ${escapeHtml(s.student_id || "-")}
-          ${s.is_currently_suspended ? `· <span class="text-[#c33c3c]">พักสิทธิ์ถึง ${s.suspended_until ? formatDate(s.suspended_until) : "-"}</span>` : ""}
-        </p>
+      <div class="flex items-center gap-3 min-w-0">
+        ${s.profile_image
+          ? `<img src="${s.profile_image}" alt="" class="w-9 h-9 rounded-full object-cover border border-[var(--line)] shrink-0">`
+          : `<span class="w-9 h-9 rounded-full flex items-center justify-center bg-[var(--paper)] border border-[var(--line)] shrink-0">
+               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2" opacity="0.4"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+             </span>`}
+        <div class="min-w-0">
+          <p class="text-sm font-medium truncate">${escapeHtml(s.first_name)} ${escapeHtml(s.last_name)} <span class="text-[var(--ink)]/40">·</span> ${escapeHtml(s.email)}</p>
+          <p class="text-xs text-[var(--ink)]/55 mt-0.5">
+            รหัสนักศึกษา ${escapeHtml(s.student_id || "-")}
+            ${s.is_currently_suspended ? `· <span class="text-[#c33c3c]">พักสิทธิ์ถึง ${s.suspended_until ? formatDate(s.suspended_until) : "-"}</span>` : ""}
+          </p>
+        </div>
       </div>
       <div class="flex gap-2">
         ${s.is_currently_suspended ? `<button data-student-id="${s.id}" class="btn btn-outline-navy !py-1.5 !px-3 text-xs unsuspend-row-btn">ปลดล็อก</button>` : ""}
@@ -580,8 +611,8 @@ async function loadCategoryList() {
 
   list.innerHTML = data.map((c) => `
     <div class="flex items-center justify-between rounded-lg border border-[var(--line)] px-3.5 py-2 text-sm">
-      <span>${c.name}</span>
-      <button data-category-id="${c.id}" data-category-name="${c.name}" class="delete-category-btn text-xs" style="color:#c33c3c;">ลบ</button>
+      <span>${escapeHtml(c.name)}</span>
+      <button data-category-id="${c.id}" data-category-name="${escapeHtml(c.name)}" class="delete-category-btn text-xs" style="color:#c33c3c;">ลบ</button>
     </div>
   `).join("");
 
@@ -599,6 +630,10 @@ async function loadCategoryList() {
 
 function setupClearData() {
   async function clearNotifications(button) {
+    // เพิ่ม confirm() ให้สมมาตรกับ clearBookingHistory() — เดิมปุ่มนี้ลบทันทีไม่มีการถามยืนยันเลย
+    // ทั้งที่เป็นการลบถาวรและกดได้จาก 2 จุด (แท็บตั้งค่า + แท็บประวัติอีเมล) จึงเสี่ยงกดพลาดง่าย
+    if (!confirm("ล้างประวัติอีเมลทั้งหมดทิ้งถาวรตอนนี้?")) return;
+
     const original = button.textContent;
     button.disabled = true;
     button.textContent = "กำลังล้าง...";
@@ -643,11 +678,167 @@ async function loadNotificationList() {
   list.innerHTML = data.map((n) => `
     <div class="surface rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p class="text-sm font-medium">${n.trigger_label}${n.booking_code ? ` <span class="text-[var(--ink)]/40">·</span> ${n.booking_code}` : ""}</p>
+        <p class="text-sm font-medium">${escapeHtml(n.trigger_label)}${n.booking_code ? ` <span class="text-[var(--ink)]/40">·</span> ${escapeHtml(n.booking_code)}` : ""}</p>
         <p class="text-xs text-[var(--ink)]/55 mt-0.5">ถึง ${escapeHtml(n.email_to || "-")} · ${formatDateTime(n.sent_at)}</p>
         ${!n.is_success ? `<p class="text-xs text-[#c33c3c] mt-0.5">ส่งไม่สำเร็จ: ${escapeHtml(n.error_message || "ไม่ทราบสาเหตุ")}</p>` : ""}
       </div>
       <span class="badge ${n.is_success ? "badge-available" : "badge-overdue"}">${n.is_success ? "ส่งสำเร็จ" : "ส่งไม่สำเร็จ"}</span>
     </div>
   `).join("");
+}
+
+/* ========================= โปรไฟล์ของฉัน (เจ้าหน้าที่) =========================
+   เวอร์ชันย่อของโปรไฟล์นักศึกษา — ตัดฟิลด์ student_id ออกเพราะไม่เกี่ยวกับเจ้าหน้าที่
+   ใช้ endpoint เดียวกัน (/auth/me/, /auth/change-password/) เพราะเป็น endpoint
+   ของ "ผู้ใช้ที่ล็อกอินอยู่" กลาง ๆ ไม่แยกตาม role */
+
+function updateNavbarAvatar() {
+  const avatar = document.getElementById("navbar-avatar");
+  if (!avatar) return;
+  if (currentStaff && currentStaff.profile_image) {
+    avatar.src = currentStaff.profile_image;
+    avatar.classList.remove("hidden");
+  } else {
+    avatar.classList.add("hidden");
+  }
+}
+
+function resetProfileImageDropzone() {
+  const preview = document.getElementById("profile-image-preview");
+  const icon = document.getElementById("profile-image-placeholder-icon");
+  if (currentStaff && currentStaff.profile_image) {
+    preview.src = currentStaff.profile_image;
+    preview.classList.remove("hidden");
+    icon.classList.add("hidden");
+  } else {
+    preview.classList.add("hidden");
+    icon.classList.remove("hidden");
+  }
+}
+
+/** ย่อรูปก่อนอัปโหลด: ด้านยาวสุด 800px, JPEG คุณภาพ 0.85 (เหมือนฝั่งนักศึกษา) */
+function compressImage(file, maxSide = 800, quality = 0.85) {
+  return new Promise((resolve) => {
+    if (!file || !file.type.startsWith("image/")) return resolve(file);
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => resolve(blob ? new File([blob], "profile.jpg", { type: "image/jpeg" }) : file),
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+function setupProfileModal() {
+  const modal = document.getElementById("profile-modal");
+  const profileForm = document.getElementById("profile-form");
+  const passwordForm = document.getElementById("password-form");
+
+  document.getElementById("open-profile-btn").addEventListener("click", () => {
+    document.getElementById("profile-email-display").value = currentStaff.email;
+    profileForm.first_name.value = currentStaff.first_name || "";
+    profileForm.last_name.value = currentStaff.last_name || "";
+    resetProfileImageDropzone();
+    document.getElementById("profile-error").classList.add("hidden");
+    document.getElementById("profile-success").classList.add("hidden");
+    modal.classList.remove("hidden");
+  });
+
+  document.getElementById("profile-modal-close").addEventListener("click", () => modal.classList.add("hidden"));
+  document.getElementById("password-modal-close").addEventListener("click", () => modal.classList.add("hidden"));
+
+  document.getElementById("profile-image-input").addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    if (!file) { resetProfileImageDropzone(); return; }
+    const preview = document.getElementById("profile-image-preview");
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove("hidden");
+    document.getElementById("profile-image-placeholder-icon").classList.add("hidden");
+  });
+
+  document.querySelectorAll(".profile-tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".profile-tab-btn").forEach((b) => {
+        b.classList.remove("border-[var(--navy)]", "text-[var(--navy)]");
+        b.classList.add("border-transparent", "text-[var(--ink)]/55");
+      });
+      btn.classList.add("border-[var(--navy)]", "text-[var(--navy)]");
+      btn.classList.remove("border-transparent", "text-[var(--ink)]/55");
+      const tab = btn.dataset.profileTab;
+      profileForm.classList.toggle("hidden", tab !== "edit");
+      passwordForm.classList.toggle("hidden", tab !== "password");
+    });
+  });
+
+  profileForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const errorBox = document.getElementById("profile-error");
+    const successBox = document.getElementById("profile-success");
+    const submitBtn = document.getElementById("profile-submit-btn");
+    errorBox.classList.add("hidden");
+    successBox.classList.add("hidden");
+    submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = "กำลังอัปโหลด...";
+
+    const fd = new FormData();
+    fd.set("first_name", profileForm.first_name.value);
+    fd.set("last_name", profileForm.last_name.value);
+    const imageFile = document.getElementById("profile-image-input").files[0];
+    if (imageFile) fd.set("profile_image", await compressImage(imageFile));
+
+    const { ok, status, data } = await Api.postFormData("/auth/me/", fd, { method: "PATCH" });
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
+
+    if (!ok) {
+      errorBox.textContent = status === 413
+        ? "ไฟล์รูปใหญ่เกินไป กรุณาเลือกรูปที่เล็กกว่านี้"
+        : extractErrorMessage(data, "บันทึกไม่สำเร็จ");
+      errorBox.classList.remove("hidden");
+      return;
+    }
+
+    currentStaff = data;
+    Api.setSession(Api.getToken(), currentStaff);
+    document.getElementById("welcome-text").textContent = `เจ้าหน้าที่: ${currentStaff.first_name || currentStaff.username}`;
+    updateNavbarAvatar();
+    document.getElementById("profile-image-input").value = "";
+    successBox.textContent = "บันทึกข้อมูลโปรไฟล์สำเร็จแล้ว";
+    successBox.classList.remove("hidden");
+  });
+
+  passwordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const errorBox = document.getElementById("password-error");
+    const successBox = document.getElementById("password-success");
+    errorBox.classList.add("hidden");
+    successBox.classList.add("hidden");
+
+    const formData = new FormData(passwordForm);
+    const { ok, data } = await Api.post("/auth/change-password/", {
+      old_password: formData.get("old_password"),
+      new_password: formData.get("new_password"),
+    });
+
+    if (!ok) {
+      errorBox.textContent = extractErrorMessage(data, "เปลี่ยนรหัสผ่านไม่สำเร็จ");
+      errorBox.classList.remove("hidden");
+      return;
+    }
+    successBox.textContent = "เปลี่ยนรหัสผ่านสำเร็จแล้ว";
+    successBox.classList.remove("hidden");
+    passwordForm.reset();
+  });
 }

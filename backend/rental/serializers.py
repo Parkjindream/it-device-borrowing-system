@@ -45,6 +45,9 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     """
     ผู้ใช้แก้ไขโปรไฟล์ตัวเองได้: ชื่อ-นามสกุล, รหัสนักศึกษา (ถ้ายังไม่มีหรือเพิ่มเติมภายหลัง),
     และรูปโปรไฟล์ (อัปโหลดแบบ multipart) — อีเมล/สิทธิ์ ต้องให้เจ้าหน้าที่แก้เท่านั้น
+
+    ใช้ร่วมกันทั้งนักศึกษาและเจ้าหน้าที่ (MeView ไม่เช็ค role) — student_id เป็น
+    required=False จึงไม่กระทบเจ้าหน้าที่ที่ไม่ส่ง field นี้มาด้วย
     """
 
     first_name = serializers.CharField(max_length=150, allow_blank=False)
@@ -303,6 +306,10 @@ class BookingSerializer(serializers.ModelSerializer):
     # ไม่ใช่ FK id ของ Booking.student_id
     student_id = serializers.CharField(source="student.student_id", read_only=True)
     student_email = serializers.CharField(source="student.email", read_only=True)
+    # เพิ่มใหม่: รูปโปรไฟล์นักศึกษา — ให้เจ้าหน้าที่เทียบหน้าคนจริงกับรูปตอนรับ-คืนอุปกรณ์
+    # (ป้องกันการสวมรอย/ส่งต่อรหัสการจองให้คนอื่นมารับแทน) อาจเป็นค่าว่างได้ถ้านักศึกษา
+    # ยังไม่เคยอัปโหลดรูปโปรไฟล์ — frontend มี fallback เป็นไอคอนคนเปล่า ๆ รองรับอยู่แล้ว
+    student_profile_image = serializers.ImageField(source="student.profile_image", read_only=True)
     is_overdue_now = serializers.SerializerMethodField()
 
     class Meta:
@@ -310,7 +317,7 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = [
             "id", "booking_code", "status",
             "equipment_name", "equipment_image", "equipment_category", "unit_serial_number",
-            "student_name", "student_id", "student_email",
+            "student_name", "student_id", "student_email", "student_profile_image",
             "requested_start_date", "requested_end_date", "booking_expires_at",
             "picked_up_at", "pickup_condition_note",
             "returned_at", "return_condition_note",
@@ -373,6 +380,8 @@ class StaffStudentSerializer(serializers.ModelSerializer):
         fields = [
             "id", "email", "first_name", "last_name", "student_id", "is_active",
             "is_suspended", "is_currently_suspended", "suspended_until", "suspended_reason",
+            # เพิ่มใหม่: ให้หน้า "จัดการนักศึกษา" ฝั่งเจ้าหน้าที่โชว์รูปประจำตัวในรายชื่อได้
+            "profile_image",
         ]
         read_only_fields = fields
 
