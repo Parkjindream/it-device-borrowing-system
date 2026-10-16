@@ -251,6 +251,7 @@ async function loadInventory() {
         <div class="min-w-0">
           <p class="font-display font-medium text-sm truncate">${escapeHtml(eq.name)} ${eq.is_active ? "" : '<span class="text-xs text-[#c33c3c]">(ปิดใช้งาน)</span>'}</p>
           <p class="text-xs text-[var(--ink)]/55 mt-0.5">${escapeHtml(eq.category?.name ?? "")} · เหลือ ${eq.available_units}/${eq.total_units} เครื่อง</p>
+          <p class="text-xs text-[var(--ink)]/45 mt-0.5 truncate inventory-specs hidden"></p>
         </div>
       </div>
         <div class="flex gap-2 flex-wrap">
@@ -261,6 +262,15 @@ async function loadInventory() {
         <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs delete-equipment-btn" style="color:#c33c3c;border-color:#c33c3c;">ลบทั้งรุ่น</button>
       </div>
     `;
+
+    // สเปกเป็นข้อความอิสระหลายบรรทัด: โชว์บรรทัดเดียวย่อ ๆ ในรายการ (เต็ม ๆ ดูได้ในหน้าแก้ไข)
+    const specsLine = row.querySelector(".inventory-specs");
+    const specsText = (eq.specifications || "").trim().replace(/\s*\n\s*/g, " · ");
+    if (specsLine && specsText) {
+      specsLine.textContent = specsText;
+      specsLine.title = eq.specifications;
+      specsLine.classList.remove("hidden");
+    }
 
     row.querySelector(".edit-equipment-btn").addEventListener("click", () => openEquipmentModal(eq));
 
@@ -365,6 +375,7 @@ async function openEquipmentModal(eq = null) {
   if (eq) {
     if (title) title.textContent = "แก้ไขรุ่นอุปกรณ์";
     form.name.value = eq.name;
+    form.specifications.value = eq.specifications || "";
     form.max_borrow_days.value = eq.max_borrow_days;
     if (eq.category) select.value = eq.category.id;
     if (eq.image) {
@@ -419,6 +430,7 @@ function setupEquipmentModal() {
     const formData = new FormData();
     formData.set("category", form.category.value);
     formData.set("name", form.name.value);
+    formData.set("specifications", form.specifications.value);
     formData.set("max_borrow_days", form.max_borrow_days.value);
     const unitsInput = document.getElementById("initial-units-input");
     const unitsValue = unitsInput && unitsInput.value !== "" ? unitsInput.value : null;
