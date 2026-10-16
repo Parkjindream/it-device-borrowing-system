@@ -170,7 +170,7 @@ class EquipmentListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Equipment
         fields = [
-            "id", "name", "description", "category", "image",
+            "id", "name", "description", "specifications", "category", "image",
             "available_units", "total_units", "max_borrow_days", "is_active",
         ]
 
@@ -200,14 +200,21 @@ class EquipmentWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Equipment
         fields = [
-            "id", "category", "name", "description", "image", "max_borrow_days", "is_active",
-            "initial_units", "target_units",
+            "id", "category", "name", "description", "specifications", "image",
+            "max_borrow_days", "is_active", "initial_units", "target_units",
         ]
 
     def validate_image(self, image):
         if image and image.size > MAX_IMAGE_BYTES:
             raise serializers.ValidationError("รูปภาพต้องมีขนาดไม่เกิน 5 MB")
         return image
+
+    def validate_specifications(self, value):
+        # สเปกเป็นข้อความอิสระ (ขึ้นบรรทัดใหม่ได้) ตัดช่องว่างหัวท้าย และจำกัดความยาวกันข้อมูลเกินจำเป็น
+        value = (value or "").strip()
+        if len(value) > 2000:
+            raise serializers.ValidationError("สเปกอุปกรณ์ยาวเกินไป (ไม่เกิน 2,000 ตัวอักษร)")
+        return value
 
     @staticmethod
     def _add_units(equipment, count):
@@ -284,7 +291,10 @@ class PublicEquipmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Equipment
-        fields = ["id", "name", "category", "image", "available_units", "total_units", "max_borrow_days"]
+        fields = [
+            "id", "name", "category", "specifications", "image",
+            "available_units", "total_units", "max_borrow_days",
+        ]
 
 
 # ---------------------------------------------------------------------------
