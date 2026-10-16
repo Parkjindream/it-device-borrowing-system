@@ -1,7 +1,8 @@
 let currentUser = null;
 let allEquipment = [];
 const MAX_ADVANCE_DAYS = 7; // ต้องตรงกับ DEFAULT_MAX_ADVANCE_DAYS ฝั่ง backend (จองล่วงหน้าได้ไม่เกินกี่วัน)
-let currentMaxBorrowDays = 1; // จำนวนวันยืมสูงสุดของอุปกรณ์ที่กำลังจอง
+let currentMaxBorrowDays = 1; // จำนวนวันยืมสูงสุดของอุปกรณ์ที่กำลังจอง (เป็นแค่เพดาน ไม่ใช่จำนวนวันที่บังคับ)
+let chosenBorrowDays = 1;     // จำนวนวันที่นักศึกษาเลือกเอง (ค่าเริ่มต้น 1 วัน) — คงไว้ตอนเปลี่ยนวันเริ่มยืม
 let activeBooking = null; // รายการที่ยังไม่จบของฉัน (รอรับของ/กำลังยืม/เกินกำหนด) — มีได้สูงสุด 1 รายการ
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -130,11 +131,19 @@ function renderEquipmentCard(eq) {
       </span>
     </div>
     <h3 class="font-display font-medium mb-1.5">${eq.name}</h3>
-    <p class="text-xs text-[var(--ink)]/55 mb-4">ยืมได้สูงสุด ${eq.max_borrow_days} วัน/ครั้ง</p>
+    <p class="text-xs text-[var(--ink)]/55 mb-2">ยืมได้สูงสุด ${eq.max_borrow_days} วัน/ครั้ง</p>
+    <p class="text-xs text-[var(--ink)]/65 mb-4 card-specs hidden" style="white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;"></p>
     <button class="btn btn-primary btn-block mt-auto book-btn" ${disableBooking ? "disabled" : ""}>
       ${outOfStock ? "ของหมดชั่วคราว" : (activeBooking ? "มีรายการค้างอยู่" : "จองอุปกรณ์นี้")}
     </button>
   `;
+
+  const specsText = (eq.specifications || "").trim();
+  if (specsText) {
+    const specsEl = card.querySelector(".card-specs");
+    specsEl.textContent = specsText;
+    specsEl.classList.remove("hidden");
+  }
 
   card.querySelector(".book-btn").addEventListener("click", () => openBookingModal(eq));
   return card;
@@ -150,8 +159,20 @@ function addDaysISO(iso, n) {
   return toISODate(new Date(y, m - 1, d + n));
 }
 
-/** ล็อกช่องวันที่: เริ่มยืมได้ตั้งแต่วันนี้ถึง +7 วัน / วันคืนไม่ก่อนวันเริ่ม และไม่เกินจำนวนวันยืมสูงสุด */
-function syncBookingDates() {
+/** จำนวนวันแบบนับรวมวันเริ่ม เช่น 10 → 12 = 3 วัน */
+function inclusiveDays(startISO, endISO) {
+  const [sy, sm, sd] = startISO.split("-").map(Number);
+  const [ey, em, ed] = endISO.split("-").map(Number);
+  return Math.round((new Date(ey, em - 1, ed) - new Date(sy, sm - 1, sd)) / 86400000) + 1;
+}
+
+/**
+ * ล็อกช่องวันที่ให้อยู่ในกรอบที่อนุญาตเท่านั้น (ไม่ได้บังคับจำนวนวัน):
+ * - วันเริ่มยืม: ตั้งแต่วันนี้ ถึงล่วงหน้าไม่เกิน MAX_ADVANCE_DAYS
+ * - วันคืน: ไม่ก่อนวันเริ่ม และไม่เกินเพดานวันยืมสูงสุดของอุปกรณ์ — ภายในกรอบนี้เลือกกี่วันก็ได้ (1 วันขึ้นไป)
+ * source: "start" = เพิ่งเปลี่ยนวันเริ่ม | "end" = เพิ่งเลือกวันคืน | "init" = เพิ่งเปิดหน้าจอง
+ */
+function syncBookingDates(source = "init") {
   const form = document.getElementById("booking-form");
   const today = toISODate(new Date());
   form.start_date.min = today;
@@ -161,23 +182,34 @@ function syncBookingDates() {
   if (form.start_date.value > form.start_date.max) form.start_date.value = form.start_date.max;
 
   const start = form.start_date.value;
-  const lastReturn = addDaysISO(start, currentMaxBorrowDays - 1); // นับรวมวันเริ่ม เช่น 3 วัน: 10 → 12
+  const lastReturn = addDaysISO(start, currentMaxBorrowDays - 1); // เพดาน (นับรวมวันเริ่ม) เช่น 3 วัน: 10 → 12
   form.end_date.min = start;
   form.end_date.max = lastReturn;
-  if (!form.end_date.value || form.end_date.value < start || form.end_date.value > lastReturn) {
-    form.end_date.value = lastReturn;
+
+  if (source === "end" && form.end_date.value) {
+    // นักศึกษาเลือกวันคืนเอง: ใช้ตามที่เลือก ถ้าหลุดกรอบค่อยดึงกลับมาที่ขอบ แล้วจำจำนวนวันที่เลือกไว้
+    if (form.end_date.value < start) form.end_date.value = start;
+    else if (form.end_date.value > lastReturn) form.end_date.value = lastReturn;
+    chosenBorrowDays = inclusiveDays(start, form.end_date.value);
+  } else {
+    // เปิดหน้าจอง / เปลี่ยนวันเริ่ม: คงจำนวนวันที่เลือกไว้ (เริ่มต้น 1 วัน) ไม่ดันไปที่ค่าสูงสุด
+    chosenBorrowDays = Math.min(Math.max(1, chosenBorrowDays), currentMaxBorrowDays);
+    form.end_date.value = addDaysISO(start, chosenBorrowDays - 1);
   }
 
   document.getElementById("modal-equipment-meta").textContent =
-    `ยืมได้สูงสุด ${currentMaxBorrowDays} วัน/ครั้ง — คืนได้ไม่เกินวันที่ ${formatDate(lastReturn)} · จองล่วงหน้าได้ไม่เกิน ${MAX_ADVANCE_DAYS} วัน`;
+    `ยืมได้สูงสุด ${currentMaxBorrowDays} วัน/ครั้ง — เลือกกี่วันก็ได้ตั้งแต่ 1 วัน ` +
+    `(คืนได้ไม่เกินวันที่ ${formatDate(lastReturn)}) · จองล่วงหน้าได้ไม่เกิน ${MAX_ADVANCE_DAYS} วัน`;
+  document.getElementById("modal-duration-summary").textContent =
+    `ยืมทั้งหมด ${chosenBorrowDays} วัน (${formatDate(start)} – ${formatDate(form.end_date.value)})`;
 }
 
 function setupBookingModal() {
   const modal = document.getElementById("booking-modal");
   const form = document.getElementById("booking-form");
 
-  form.start_date.addEventListener("change", syncBookingDates);
-  form.end_date.addEventListener("change", syncBookingDates);
+  form.start_date.addEventListener("change", () => syncBookingDates("start"));
+  form.end_date.addEventListener("change", () => syncBookingDates("end"));
 
   document.getElementById("modal-cancel-btn").addEventListener("click", () => modal.classList.add("hidden"));
 
@@ -222,9 +254,16 @@ function openBookingModal(eq) {
   if (modalImg) modalImg.src = equipmentImageSrc(eq);
   document.getElementById("modal-equipment-name").textContent = eq.name;
   currentMaxBorrowDays = Math.max(1, Number(eq.max_borrow_days) || 1);
+  chosenBorrowDays = 1; // เริ่มที่ 1 วันเสมอ นักศึกษาเลือกเพิ่มเองได้ไม่เกินเพดาน
   form.start_date.value = "";
   form.end_date.value = "";
-  syncBookingDates();
+  syncBookingDates("init");
+
+  // สเปกอุปกรณ์ (ข้อความอิสระ): ใช้ textContent + white-space:pre-line เพื่อคงการขึ้นบรรทัดและกัน HTML injection
+  const specsText = (eq.specifications || "").trim();
+  const specsWrap = document.getElementById("modal-equipment-specs-wrap");
+  document.getElementById("modal-equipment-specs").textContent = specsText;
+  specsWrap.classList.toggle("hidden", !specsText);
 
   modal.classList.remove("hidden");
 }
