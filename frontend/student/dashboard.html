@@ -102,7 +102,11 @@
       <img id="modal-equipment-image" src="" alt="" class="w-full h-full object-contain p-2">
     </div>
     <h3 class="font-display font-semibold text-lg mb-1" id="modal-equipment-name"></h3>
-    <p class="text-sm text-[var(--ink)]/60 mb-5" id="modal-equipment-meta"></p>
+    <p class="text-sm text-[var(--ink)]/60 mb-3" id="modal-equipment-meta"></p>
+    <div id="modal-equipment-specs-wrap" class="hidden mb-5 rounded-lg bg-[var(--paper)] px-3.5 py-3">
+      <p class="text-xs font-medium text-[var(--ink)]/55 mb-1">สเปกอุปกรณ์</p>
+      <p id="modal-equipment-specs" class="text-sm text-[var(--ink)]/80 max-h-32 overflow-y-auto" style="white-space: pre-line;"></p>
+    </div>
 
     <div id="modal-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
 
@@ -115,6 +119,7 @@
       <label class="block mb-5">
         <span class="text-sm font-medium">วันครบกำหนดคืน</span>
         <input type="date" name="end_date" required class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+        <p id="modal-duration-summary" class="text-xs text-[var(--ink)]/55 mt-1.5"></p>
       </label>
       <div class="flex flex-col sm:flex-row gap-3">
         <button type="button" id="modal-cancel-btn" class="btn btn-outline-navy flex-1">ยกเลิก</button>
