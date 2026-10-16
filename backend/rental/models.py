@@ -117,6 +117,9 @@ class Equipment(models.Model):
     )
     name = models.CharField("ชื่ออุปกรณ์", max_length=200)
     description = models.TextField("รายละเอียด", blank=True)
+    # สเปกอุปกรณ์เป็นข้อความอิสระ (เช่น CPU / RAM / SSD / จอ) เจ้าหน้าที่ใส่/แก้ได้ทุกครั้งที่แก้ไขรุ่น
+    # ใช้แสดงให้นักศึกษาดูก่อนจอง — ไม่บังคับกรอก
+    specifications = models.TextField("สเปกอุปกรณ์", blank=True, default="")
     image = models.ImageField("รูปภาพ", upload_to="equipment/", blank=True, null=True)
     max_borrow_days = models.PositiveSmallIntegerField(
         "จำนวนวันยืมสูงสุดต่อครั้ง",
