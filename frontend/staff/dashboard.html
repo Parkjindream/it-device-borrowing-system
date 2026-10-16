@@ -275,8 +275,16 @@
         <input type="text" name="name" required class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]" placeholder="เช่น โน้ตบุ๊ก Dell Latitude 5420">
       </label>
       <label class="block mb-4">
+        <span class="text-sm font-medium">สเปกอุปกรณ์ (ไม่บังคับ)</span>
+        <textarea name="specifications" rows="5" maxlength="2000"
+          class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)] resize-y"
+          placeholder="พิมพ์ได้อิสระ ขึ้นบรรทัดใหม่ได้ เช่น&#10;CPU: Intel Core i5-1135G7&#10;RAM: 16 GB&#10;SSD: 512 GB&#10;จอ: 14 นิ้ว Full HD"></textarea>
+        <p class="text-xs text-[var(--ink)]/50 mt-1.5">นักศึกษาจะเห็นข้อความนี้ก่อนกดจอง แก้ไขได้ทุกครั้งที่กด "แก้ไข/เปลี่ยนรูป"</p>
+      </label>
+      <label class="block mb-4">
         <span class="text-sm font-medium">ยืมได้สูงสุด (วัน)</span>
         <input type="number" name="max_borrow_days" required min="1" value="7" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+        <p class="text-xs text-[var(--ink)]/50 mt-1.5">เป็นเพดานสูงสุด — นักศึกษาเลือกจองกี่วันก็ได้ ตั้งแต่ 1 วันจนถึงไม่เกินค่านี้</p>
       </label>
            <label class="block mb-4" id="initial-units-wrap">
         <span class="text-sm font-medium" id="units-label">จำนวนเครื่องที่มีตอนนี้</span>
