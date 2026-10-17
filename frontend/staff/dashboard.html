@@ -3,92 +3,65 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#cc2a6c">
 <title>หน้าเจ้าหน้าที่ — ศูนย์ยืม-คืนอุปกรณ์ไอที</title>
-<link rel="icon" href="../assets/img/favicon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="icon" type="image/png" href="../assets/img/favicon.png">
+<link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
+<link rel="preload" href="../assets/fonts/anuphan-thai-600-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../assets/css/style.css">
-
-<!--
-  ===== Responsive overrides เฉพาะหน้านี้ =====
-  เสริมจาก assets/css/style.css เดิม ไม่แก้ไฟล์นั้น — ไม่กระทบ id/logic ใด ๆ
-  ที่ staff-dashboard.js อ้างถึงอยู่
--->
-<style>
-  body{ overflow-x:hidden; }
-
-  /* แท็บ 5 อัน: เลื่อนแนวนอนได้บนจอแคบแทนการตกบรรทัดซ้อนกันหลายแถว */
-  #tab-bar{
-    flex-wrap:nowrap;
-    overflow-x:auto;
-    -webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-  }
-  #tab-bar::-webkit-scrollbar{ display:none; }
-  .tab-btn{ flex-shrink:0; white-space:nowrap; }
-
-  /* โมดัล: จำกัดความสูง เลื่อนเนื้อหาภายในได้ กันล้นจอมือถือ/จอเตี้ย */
-  #confirm-modal .surface,
-  #equipment-modal .surface,
-  #profile-modal .surface{
-    max-height:90vh;
-    overflow-y:auto;
-  }
-
-  .btn{ min-height:40px; }
-</style>
 </head>
 <body class="antialiased">
 
 <!-- ===== Header ===== -->
-<header class="bg-[var(--navy)] sticky top-0 z-40">
-  <div class="max-w-6xl mx-auto px-4 sm:px-5 h-16 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-    <a href="../index.html" class="flex items-center gap-2.5 min-w-0" aria-label="กลับไปหน้าแรก">
-      <img src="../assets/img/logo.png" alt="โลโก้" class="brand-logo shrink-0">
-      <span class="font-display font-semibold text-white text-sm sm:text-base truncate">
-        <span class="hidden sm:inline">แผงควบคุมเจ้าหน้าที่</span>
-        <span class="sm:hidden">แผงควบคุม</span>
+<header class="site-header">
+  <div class="max-w-6xl mx-auto px-3 sm:px-6 h-16 sm:h-[68px] flex items-center justify-between gap-2 sm:gap-4">
+    <a href="../index.html" class="brand flex-1 min-w-0" aria-label="กลับไปหน้าแรก">
+      <img src="../assets/img/logo.png" alt="" class="brand-logo" width="42" height="42">
+      <span class="min-w-0">
+        <span class="brand-name"><span class="hidden sm:inline">แผงควบคุมเจ้าหน้าที่</span><span class="sm:hidden">แผงควบคุม</span></span>
+        <span class="role-pill mt-0.5">เจ้าหน้าที่</span>
       </span>
     </a>
-    <div class="flex items-center gap-2 sm:gap-4">
-      <img id="navbar-avatar" alt="รูปโปรไฟล์" class="hidden w-9 h-9 rounded-full object-cover border border-white/30">
-      <span id="welcome-text" class="text-sm text-white/70 hidden sm:inline"></span>
-      <button id="open-profile-btn" class="btn btn-ghost !py-1.5 !px-3 sm:!px-4 text-xs sm:text-sm whitespace-nowrap">โปรไฟล์</button>
-      <button id="logout-btn" class="btn btn-ghost !py-1.5 !px-3 sm:!px-4 text-xs sm:text-sm whitespace-nowrap">ออกจากระบบ</button>
+    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+      <img id="navbar-avatar" alt="รูปโปรไฟล์" class="hidden w-10 h-10 rounded-full object-cover avatar-ring">
+      <button id="open-profile-btn" class="btn btn-ghost !min-h-[42px] !py-1.5 !px-0 w-[42px] sm:w-auto sm:!px-5 text-sm whitespace-nowrap" aria-label="โปรไฟล์"><svg class="w-[19px] h-[19px] sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span class="hidden sm:inline">โปรไฟล์</span></button>
+      <button id="logout-btn" class="btn btn-outline-navy !min-h-[42px] !py-1.5 !px-0 w-[42px] sm:w-auto sm:!px-5 text-sm whitespace-nowrap" aria-label="ออกจากระบบ"><svg class="w-[19px] h-[19px] sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="hidden sm:inline">ออกจากระบบ</span></button>
     </div>
   </div>
 </header>
 
-<main class="max-w-6xl mx-auto px-4 sm:px-5 py-6 sm:py-8">
+<main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+  <h1 class="sr-only">แผงควบคุมเจ้าหน้าที่</h1>
+  <span id="welcome-text" class="hidden"></span>
 
   <!-- ===== Tabs ===== -->
-  <div id="tab-bar" class="flex gap-2 mb-6 sm:mb-8 border-b border-[var(--line)] flex-wrap">
-    <button data-tab="queue" class="tab-btn px-3 sm:px-4 py-2.5 text-sm font-medium font-display border-b-2 border-[var(--navy)] text-[var(--navy)]">คิวรับ-คืนอุปกรณ์</button>
-    <button data-tab="inventory" class="tab-btn px-3 sm:px-4 py-2.5 text-sm font-medium font-display border-b-2 border-transparent text-[var(--ink)]/55">จัดการคลังอุปกรณ์</button>
-    <button data-tab="students" class="tab-btn px-3 sm:px-4 py-2.5 text-sm font-medium font-display border-b-2 border-transparent text-[var(--ink)]/55">จัดการนักศึกษา</button>
-    <button data-tab="settings" class="tab-btn px-3 sm:px-4 py-2.5 text-sm font-medium font-display border-b-2 border-transparent text-[var(--ink)]/55">ตั้งค่าระบบ</button>
-    <button data-tab="notifications" class="tab-btn px-3 sm:px-4 py-2.5 text-sm font-medium font-display border-b-2 border-transparent text-[var(--ink)]/55">ประวัติอีเมล</button>
+  <div id="tab-bar" class="mb-6 sm:mb-8" role="tablist">
+    <button data-tab="queue" class="tab-btn px-4 sm:px-5 py-3 text-sm font-display border-b-2 border-[var(--navy)] text-[var(--navy)]">คิวรับ-คืนอุปกรณ์</button>
+    <button data-tab="inventory" class="tab-btn px-4 sm:px-5 py-3 text-sm font-display border-b-2 border-transparent text-[var(--ink)]/55">จัดการคลังอุปกรณ์</button>
+    <button data-tab="students" class="tab-btn px-4 sm:px-5 py-3 text-sm font-display border-b-2 border-transparent text-[var(--ink)]/55">จัดการนักศึกษา</button>
+    <button data-tab="settings" class="tab-btn px-4 sm:px-5 py-3 text-sm font-display border-b-2 border-transparent text-[var(--ink)]/55">ตั้งค่าระบบ</button>
+    <button data-tab="notifications" class="tab-btn px-4 sm:px-5 py-3 text-sm font-display border-b-2 border-transparent text-[var(--ink)]/55">ประวัติอีเมล</button>
   </div>
 
   <!-- ===== Tab: คิวรับ-คืน ===== -->
   <section id="tab-queue">
-    <div id="summary-cards" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"></div>
+    <div id="summary-cards" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6"></div>
 
-    <div class="surface rounded-2xl p-5 mb-6">
-      <p class="text-sm font-medium mb-2">ค้นหาด้วยรหัสการจอง (สแกน QR หรือพิมพ์เอง)</p>
+    <div class="surface rounded-2xl p-5 sm:p-6 mb-6">
+      <p class="field-label !mb-3">ค้นหาด้วยรหัสการจอง (สแกน QR หรือพิมพ์เอง)</p>
       <div class="flex flex-col sm:flex-row gap-3">
-        <input id="lookup-input" type="text" placeholder="เช่น BK-XXXXXXXXXX"
-          class="flex-1 rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
-        <button id="lookup-btn" class="btn btn-primary">ค้นหา</button>
+        <input id="lookup-input" type="text" placeholder="เช่น BK-XXXXXXXXXX" class="input flex-1">
+        <button id="lookup-btn" class="btn btn-primary sm:!px-8">ค้นหา</button>
       </div>
       <div id="lookup-result" class="hidden mt-4"></div>
-      <p id="lookup-not-found" class="hidden mt-4 text-sm text-[#c33c3c]">ไม่พบรายการจองนี้ในระบบ</p>
+      <p id="lookup-not-found" class="hidden mt-4 text-sm text-[#b42335]">ไม่พบรายการจองนี้ในระบบ</p>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-      <h3 class="font-display font-medium">รายการทั้งหมด</h3>
-      <select id="status-filter" class="rounded-lg border border-[var(--line)] px-3 py-2 text-sm outline-none">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <h2 class="font-display font-semibold text-lg text-[var(--rose-900)]">รายการทั้งหมด</h2>
+      <select id="status-filter" class="input !w-auto !min-h-[42px] !py-2" aria-label="กรองตามสถานะ">
         <option value="">ทุกสถานะ</option>
         <option value="awaiting_pickup">รอรับของ</option>
         <option value="borrowed">กำลังยืม</option>
@@ -98,63 +71,60 @@
       </select>
     </div>
     <div id="queue-list" class="space-y-3"></div>
-    <p id="queue-empty" class="hidden text-center text-sm text-[var(--ink)]/50 py-12">ไม่มีรายการในสถานะนี้</p>
+    <p id="queue-empty" class="hidden text-center text-sm text-[var(--ink)]/55 py-16">ไม่มีรายการในสถานะนี้</p>
   </section>
 
   <!-- ===== Tab: จัดการคลังอุปกรณ์ ===== -->
   <section id="tab-inventory" class="hidden">
-    <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-      <h3 class="font-display font-medium">รุ่นอุปกรณ์ทั้งหมด</h3>
-      <button id="new-equipment-btn" class="btn btn-primary !py-2 !px-4 text-sm">+ เพิ่มรุ่นอุปกรณ์</button>
+    <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+      <h2 class="font-display font-semibold text-lg text-[var(--rose-900)]">รุ่นอุปกรณ์ทั้งหมด</h2>
+      <button id="new-equipment-btn" class="btn btn-primary !min-h-[42px] !py-2 !px-5 text-sm">+ เพิ่มรุ่นอุปกรณ์</button>
     </div>
     <div id="inventory-list" class="space-y-3"></div>
   </section>
 
   <!-- ===== Tab: จัดการนักศึกษา ===== -->
   <section id="tab-students" class="hidden">
-    <div class="grid md:grid-cols-2 gap-6 mb-6">
-      <div class="surface rounded-2xl p-6">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(30,42,74,0.08);">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 8h4M19 6v4"/></svg>
-          </div>
-          <h3 class="font-display font-medium">เพิ่มนักศึกษา 1 คน</h3>
+    <div class="grid md:grid-cols-2 gap-5 sm:gap-6 mb-6">
+      <div class="surface rounded-2xl p-5 sm:p-6">
+        <div class="flex items-center gap-3 mb-5">
+          <span class="icon-tile icon-tile-sm"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 8h4M19 6v4"/></svg></span>
+          <h3 class="font-display font-semibold text-[var(--rose-900)]">เพิ่มนักศึกษา 1 คน</h3>
         </div>
         <div id="add-student-message" class="hidden mb-3 text-sm rounded-lg px-3 py-2.5"></div>
         <form id="add-student-form" class="space-y-3">
-          <input name="email" type="email" required placeholder="อีเมล"
-            class="w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+          <input name="email" type="email" required placeholder="อีเมล" class="input">
           <div class="grid grid-cols-2 gap-3">
-            <input name="first_name" required placeholder="ชื่อ" class="rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
-            <input name="last_name" placeholder="นามสกุล" class="rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+            <input name="first_name" required placeholder="ชื่อ" class="input">
+            <input name="last_name" placeholder="นามสกุล" class="input">
           </div>
-          <input name="student_id" placeholder="รหัสนักศึกษา (ถ้ามี)" class="w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+          <input name="student_id" placeholder="รหัสนักศึกษา (ถ้ามี)" class="input">
           <button type="submit" class="btn btn-primary btn-block">เพิ่มนักศึกษา</button>
-          <p class="text-xs text-[var(--ink)]/50">ยังไม่ตั้งรหัสผ่าน — นักศึกษาใช้ "ลืมรหัสผ่าน" ที่หน้า login เพื่อตั้งรหัสผ่านครั้งแรกเอง</p>
+          <p class="hint">ยังไม่ตั้งรหัสผ่าน — นักศึกษาใช้ "ลืมรหัสผ่าน" ที่หน้า login เพื่อตั้งรหัสผ่านครั้งแรกเอง</p>
         </form>
       </div>
 
-      <div class="surface rounded-2xl p-6">
+      <div class="surface rounded-2xl p-5 sm:p-6">
         <div class="flex items-center gap-3 mb-4">
-          <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(47,143,130,0.12);">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M12 3v12M12 15l-4-4M12 15l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
-          </div>
-          <h3 class="font-display font-medium">นำเข้าหลายคนพร้อมกัน (CSV)</h3>
+          <span class="icon-tile icon-tile-sm"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M12 15l-4-4M12 15l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg></span>
+          <h3 class="font-display font-semibold text-[var(--rose-900)]">นำเข้าหลายคนพร้อมกัน (CSV)</h3>
         </div>
-        <p class="text-xs text-[var(--ink)]/50 mb-2">รูปแบบ 1 บรรทัด/คน: อีเมล,ชื่อ,นามสกุล,รหัสนักศึกษา</p>
+        <p class="hint !mt-0 mb-2">รูปแบบ 1 บรรทัด/คน: อีเมล,ชื่อ,นามสกุล,รหัสนักศึกษา</p>
         <textarea id="import-textarea" rows="6" placeholder="6501111@student.ac.th,สมชาย,ใจดี,6501111
 6501112@student.ac.th,สมหญิง,รักเรียน,6501112"
-          class="w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)] font-mono"></textarea>
+          class="input font-mono !text-sm"></textarea>
         <div id="import-message" class="hidden mt-3 text-sm rounded-lg px-3 py-2.5"></div>
-        <button id="import-btn" class="btn btn-primary mt-3">นำเข้าทั้งหมด</button>
+        <button id="import-btn" class="btn btn-primary mt-3 max-sm:w-full">นำเข้าทั้งหมด</button>
       </div>
     </div>
 
-    <div class="surface rounded-2xl p-5">
-      <div class="flex flex-wrap gap-3 mb-4">
-        <input id="student-search-input" type="text" placeholder="ค้นหาชื่อ/อีเมล/รหัสนักศึกษา..."
-          class="flex-1 min-w-[200px] rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
-        <label class="flex items-center gap-2 text-sm">
+    <div class="surface rounded-2xl p-5 sm:p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+        <div class="relative flex-1">
+          <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--rose-400)] pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="student-search-input" type="text" placeholder="ค้นหาชื่อ/อีเมล/รหัสนักศึกษา..." class="input !pl-12">
+        </div>
+        <label class="flex items-center gap-2 text-sm text-[var(--ink)]/75 min-h-[44px] cursor-pointer select-none">
           <input type="checkbox" id="student-suspended-only"> แสดงเฉพาะที่ถูกพักสิทธิ์
         </label>
       </div>
@@ -163,66 +133,56 @@
   </section>
 
   <!-- ===== Tab: ตั้งค่าระบบ ===== -->
-  <section id="tab-settings" class="hidden max-w-md">
-    <div class="surface rounded-2xl p-6 mb-6">
+  <section id="tab-settings" class="hidden max-w-xl">
+    <div class="surface rounded-2xl p-5 sm:p-6 mb-6">
       <div class="flex items-center gap-3 mb-2">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(232,163,61,0.15);">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--amber-dark)" stroke-width="2"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/><path d="M9.5 12l1.8 1.8L15 10"/></svg>
-        </div>
-        <h3 class="font-display font-medium">เกณฑ์บทลงโทษ</h3>
+        <span class="icon-tile icon-tile-sm"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/><path d="M9.5 12l1.8 1.8L15 10"/></svg></span>
+        <h3 class="font-display font-semibold text-[var(--rose-900)]">เกณฑ์บทลงโทษ</h3>
       </div>
       <p class="text-sm text-[var(--ink)]/60 mb-5">ปรับได้ทันทีโดยไม่ต้องแก้โค้ด มีผลกับการจอง/การรับคืนครั้งถัดไปทันที</p>
       <div id="penalty-message" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5"></div>
-      <form id="penalty-form" class="space-y-4">
-        <label class="block">
-          <span class="text-sm font-medium">เวลาหมดอายุการจอง (ชั่วโมง) — ต้องมารับก่อนเวลานี้</span>
-          <input name="booking_expire_hours" type="number" min="1" max="168" required
-            class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      <form id="penalty-form">
+        <label class="field">
+          <span class="field-label">เวลาหมดอายุการจอง (ชั่วโมง) — ต้องมารับก่อนเวลานี้</span>
+          <input name="booking_expire_hours" type="number" min="1" max="168" required class="input">
         </label>
-        <label class="block">
-          <span class="text-sm font-medium">เกินกำหนดตั้งแต่ (วัน) ถึงจะได้รับบทลงโทษ</span>
-          <input name="overdue_days_threshold" type="number" min="1" max="60" required
-            class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+        <label class="field">
+          <span class="field-label">เกินกำหนดตั้งแต่ (วัน) ถึงจะได้รับบทลงโทษ</span>
+          <input name="overdue_days_threshold" type="number" min="1" max="60" required class="input">
         </label>
-        <label class="block">
-          <span class="text-sm font-medium">จำนวนวันที่พักสิทธิ์</span>
-          <input name="suspension_days" type="number" min="1" max="365" required
-            class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+        <label class="field !mb-6">
+          <span class="field-label">จำนวนวันที่พักสิทธิ์</span>
+          <input name="suspension_days" type="number" min="1" max="365" required class="input">
         </label>
         <button type="submit" class="btn btn-primary btn-block">บันทึกการตั้งค่า</button>
       </form>
     </div>
 
-    <div class="surface rounded-2xl p-6 mb-6">
+    <div class="surface rounded-2xl p-5 sm:p-6 mb-6">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(47,143,130,0.12);">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-        </div>
-        <h3 class="font-display font-medium">หมวดหมู่อุปกรณ์</h3>
+        <span class="icon-tile icon-tile-sm"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+        <h3 class="font-display font-semibold text-[var(--rose-900)]">หมวดหมู่อุปกรณ์</h3>
       </div>
       <div id="category-list" class="space-y-2 mb-4"></div>
       <div id="category-message" class="hidden mb-3 text-sm rounded-lg px-3 py-2.5"></div>
-      <div class="flex flex-col sm:flex-row gap-2">
-        <input id="new-category-input" placeholder="ชื่อหมวดหมู่ใหม่"
-          class="flex-1 rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input id="new-category-input" placeholder="ชื่อหมวดหมู่ใหม่" class="input flex-1">
         <button id="add-category-btn" class="btn btn-primary">เพิ่ม</button>
       </div>
     </div>
 
-    <div class="surface rounded-2xl p-6" style="border-color:rgba(232,163,61,0.35);">
+    <div class="surface rounded-2xl p-5 sm:p-6" style="border-color:#ffd3d8;">
       <div class="flex items-center gap-3 mb-2">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(232,163,61,0.15);">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="var(--amber-dark)" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13"/></svg>
-        </div>
-        <h3 class="font-display font-medium">เคลียร์ข้อมูลเก่า</h3>
+        <span class="icon-tile icon-tile-sm" style="background:#fff0f1;border-color:#ffd3d8;color:#b42335;"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13"/></svg></span>
+        <h3 class="font-display font-semibold text-[var(--rose-900)]">เคลียร์ข้อมูลเก่า</h3>
       </div>
-      <p class="text-sm text-[var(--ink)]/60 mb-4">
+      <p class="text-sm text-[var(--ink)]/60 mb-4 leading-relaxed">
         กดแล้วลบทันทีทั้งหมด (ประวัติอีเมลทั้งหมด / ประวัติการยืมที่ "จบแล้ว" คือคืนแล้วหรือยกเลิก
         ทั้งหมด) — รายการที่ยัง "รอรับของ/กำลังยืม/เกินกำหนด" จะไม่ถูกลบไม่ว่ากรณีใด
         นอกจากนี้ระบบยังเคลียร์ของเก่า (เกิน 7/180 วัน) ให้อัตโนมัติทุกวันอยู่แล้วด้วย
       </p>
       <div id="clear-data-message" class="hidden mb-3 text-sm rounded-lg px-3 py-2.5"></div>
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-col gap-2.5">
         <button id="clear-notifications-btn" class="btn btn-outline-navy btn-block">ล้างประวัติอีเมลทั้งหมดตอนนี้</button>
         <button id="clear-booking-history-btn" class="btn btn-outline-navy btn-block">ล้างประวัติการยืมที่จบแล้วทั้งหมดตอนนี้</button>
       </div>
@@ -232,27 +192,27 @@
   <!-- ===== Tab: ประวัติอีเมล ===== -->
   <section id="tab-notifications" class="hidden">
     <div class="flex justify-end mb-4">
-    <button id="clear-notifications-now-btn" class="btn btn-outline-navy !py-1.5 !px-4 text-sm">ล้างประวัติทั้งหมดตอนนี้</button>
+      <button id="clear-notifications-now-btn" class="btn btn-outline-navy !min-h-[40px] !py-1.5 !px-4 text-sm">ล้างประวัติทั้งหมดตอนนี้</button>
     </div>
     <div id="notification-list" class="space-y-2"></div>
-    <p id="notification-empty" class="hidden text-center text-sm text-[var(--ink)]/50 py-12">ยังไม่มีประวัติการแจ้งเตือน</p>
+    <p id="notification-empty" class="hidden text-center text-sm text-[var(--ink)]/55 py-16">ยังไม่มีประวัติการแจ้งเตือน</p>
   </section>
 </main>
 
 <!-- ===== Modal: ยืนยันรับ/คืนของ ===== -->
-<div id="confirm-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-5">
-  <div class="surface rounded-2xl p-5 sm:p-6 w-full max-w-sm">
-    <h3 class="font-display font-semibold text-lg mb-4" id="confirm-modal-title"></h3>
-    <div id="confirm-modal-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
+<div id="confirm-modal" class="modal-backdrop hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-5">
+  <div class="modal-sheet p-5 sm:p-6 w-full sm:max-w-md">
+    <h3 class="modal-title mb-4" id="confirm-modal-title"></h3>
+    <div id="confirm-modal-error" class="hidden alert alert-error mb-4"></div>
     <form id="confirm-modal-form">
-      <label class="block mb-4">
-        <span class="text-sm font-medium">บันทึกสภาพอุปกรณ์ (ถ้ามี)</span>
-        <textarea name="condition_note" rows="2" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]" placeholder="เช่น สภาพดี ไม่มีรอยขีดข่วน"></textarea>
+      <label class="field">
+        <span class="field-label">บันทึกสภาพอุปกรณ์ (ถ้ามี)</span>
+        <textarea name="condition_note" rows="2" class="input" placeholder="เช่น สภาพดี ไม่มีรอยขีดข่วน"></textarea>
       </label>
-      <label id="damaged-checkbox-wrap" class="hidden flex items-center gap-2 mb-5 text-sm">
+      <label id="damaged-checkbox-wrap" class="hidden flex items-center gap-2.5 mb-5 text-sm min-h-[44px] cursor-pointer">
         <input type="checkbox" name="is_damaged"> อุปกรณ์ชำรุด (ปิดใช้งานชิ้นนี้ทันที)
       </label>
-      <div class="flex flex-col sm:flex-row gap-3">
+      <div class="flex flex-col-reverse sm:flex-row gap-3 mt-2">
         <button type="button" id="confirm-modal-cancel" class="btn btn-outline-navy flex-1">ยกเลิก</button>
         <button type="submit" id="confirm-modal-submit" class="btn btn-primary flex-1">ยืนยัน</button>
       </div>
@@ -261,53 +221,52 @@
 </div>
 
 <!-- ===== Modal: เพิ่ม/แก้ไขรุ่นอุปกรณ์ ===== -->
-<div id="equipment-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-5">
-  <div class="surface rounded-2xl p-5 sm:p-6 w-full max-w-sm">
-      <h3 class="font-display font-semibold text-lg mb-4" id="equipment-modal-title">เพิ่มรุ่นอุปกรณ์ใหม่</h3>
-    <div id="equipment-modal-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
+<div id="equipment-modal" class="modal-backdrop hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-5">
+  <div class="modal-sheet p-5 sm:p-6 w-full sm:max-w-lg">
+    <h3 class="modal-title mb-4" id="equipment-modal-title">เพิ่มรุ่นอุปกรณ์ใหม่</h3>
+    <div id="equipment-modal-error" class="hidden alert alert-error mb-4"></div>
     <form id="equipment-form">
-      <label class="block mb-4">
-        <span class="text-sm font-medium">หมวดหมู่</span>
-        <select name="category" required id="equipment-category-select" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]"></select>
+      <label class="field">
+        <span class="field-label">หมวดหมู่</span>
+        <select name="category" required id="equipment-category-select" class="input"></select>
       </label>
-      <label class="block mb-4">
-        <span class="text-sm font-medium">ชื่ออุปกรณ์</span>
-        <input type="text" name="name" required class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]" placeholder="เช่น โน้ตบุ๊ก Dell Latitude 5420">
+      <label class="field">
+        <span class="field-label">ชื่ออุปกรณ์</span>
+        <input type="text" name="name" required class="input" placeholder="เช่น โน้ตบุ๊ก Dell Latitude 5420">
       </label>
-      <label class="block mb-4">
-        <span class="text-sm font-medium">สเปกอุปกรณ์ (ไม่บังคับ)</span>
-        <textarea name="specifications" rows="5" maxlength="2000"
-          class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)] resize-y"
+      <label class="field">
+        <span class="field-label">สเปกอุปกรณ์ (ไม่บังคับ)</span>
+        <textarea name="specifications" rows="5" maxlength="2000" class="input resize-y"
           placeholder="พิมพ์ได้อิสระ ขึ้นบรรทัดใหม่ได้ เช่น&#10;CPU: Intel Core i5-1135G7&#10;RAM: 16 GB&#10;SSD: 512 GB&#10;จอ: 14 นิ้ว Full HD"></textarea>
-        <p class="text-xs text-[var(--ink)]/50 mt-1.5">นักศึกษาจะเห็นข้อความนี้ก่อนกดจอง แก้ไขได้ทุกครั้งที่กด "แก้ไข/เปลี่ยนรูป"</p>
+        <p class="hint">นักศึกษาจะเห็นข้อความนี้ก่อนกดจอง แก้ไขได้ทุกครั้งที่กด "แก้ไข/เปลี่ยนรูป"</p>
       </label>
-      <label class="block mb-4">
-        <span class="text-sm font-medium">ยืมได้สูงสุด (วัน)</span>
-        <input type="number" name="max_borrow_days" required min="1" value="7" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
-        <p class="text-xs text-[var(--ink)]/50 mt-1.5">เป็นเพดานสูงสุด — นักศึกษาเลือกจองกี่วันก็ได้ ตั้งแต่ 1 วันจนถึงไม่เกินค่านี้</p>
+      <label class="field">
+        <span class="field-label">ยืมได้สูงสุด (วัน)</span>
+        <input type="number" name="max_borrow_days" required min="1" value="7" class="input">
+        <p class="hint">เป็นเพดานสูงสุด — นักศึกษาเลือกจองกี่วันก็ได้ ตั้งแต่ 1 วันจนถึงไม่เกินค่านี้</p>
       </label>
-           <label class="block mb-4" id="initial-units-wrap">
-        <span class="text-sm font-medium" id="units-label">จำนวนเครื่องที่มีตอนนี้</span>
-        <div class="mt-1.5 flex items-center gap-2">
-          <button type="button" id="units-minus-btn" class="btn btn-outline-navy !py-2 !px-3.5 text-base leading-none">−</button>
-          <input type="number" id="initial-units-input" min="0" max="500" value="1" class="w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm text-center outline-none focus:border-[var(--navy)]">
-          <button type="button" id="units-plus-btn" class="btn btn-outline-navy !py-2 !px-3.5 text-base leading-none">+</button>
+      <label class="field" id="initial-units-wrap">
+        <span class="field-label" id="units-label">จำนวนเครื่องที่มีตอนนี้</span>
+        <div class="flex items-center gap-2">
+          <button type="button" id="units-minus-btn" class="btn btn-outline-navy !px-0 w-12 shrink-0 text-lg leading-none" aria-label="ลดจำนวน">−</button>
+          <input type="number" id="initial-units-input" min="0" max="500" value="1" class="input text-center">
+          <button type="button" id="units-plus-btn" class="btn btn-outline-navy !px-0 w-12 shrink-0 text-lg leading-none" aria-label="เพิ่มจำนวน">+</button>
         </div>
-        <p id="units-hint" class="text-xs text-[var(--ink)]/50 mt-1.5">ระบบจะสร้างหมายเลขเครื่องให้อัตโนมัติ (ใส่ 0 ถ้าจะเพิ่มทีหลัง)</p>
+        <p id="units-hint" class="hint">ระบบจะสร้างหมายเลขเครื่องให้อัตโนมัติ (ใส่ 0 ถ้าจะเพิ่มทีหลัง)</p>
       </label>
 
-      <label class="block mb-5">
-        <span class="text-sm font-medium">รูปภาพอุปกรณ์ (ไม่บังคับ)</span>
+      <div class="field !mb-6">
+        <span class="field-label">รูปภาพอุปกรณ์ (ไม่บังคับ)</span>
         <label for="equipment-image-input" id="equipment-image-dropzone"
-          class="mt-1.5 flex flex-col items-center justify-center gap-1.5 w-full h-28 rounded-lg border-2 border-dashed border-[var(--line)] cursor-pointer hover:border-[var(--navy)] transition-colors bg-[var(--paper)] overflow-hidden">
-          <svg id="equipment-image-placeholder-icon" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" opacity="0.4"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>
-          <span id="equipment-image-placeholder-text" class="text-xs text-[var(--ink)]/45">คลิกเพื่อเลือกรูปภาพ</span>
-          <img id="equipment-image-preview" class="hidden w-full h-full object-contain p-1">
+          class="flex flex-col items-center justify-center gap-1.5 w-full h-32 rounded-2xl border-2 border-dashed border-[var(--rose-300)] cursor-pointer bg-[var(--rose-50)] overflow-hidden">
+          <svg id="equipment-image-placeholder-icon" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="var(--rose-400)" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>
+          <span id="equipment-image-placeholder-text" class="text-sm text-[var(--rose-700)] font-medium">คลิกเพื่อเลือกรูปภาพ</span>
+          <img id="equipment-image-preview" class="hidden w-full h-full object-contain p-1" alt="ตัวอย่างรูปอุปกรณ์">
         </label>
         <input type="file" name="image" accept="image/*" id="equipment-image-input" class="hidden">
-        <p class="text-xs text-[var(--ink)]/50 mt-1.5">ถ้าไม่อัปโหลด ระบบจะใช้ภาพประกอบสำเร็จรูปแทนให้อัตโนมัติ</p>
-      </label>
-      <div class="flex flex-col sm:flex-row gap-3">
+        <p class="hint">ถ้าไม่อัปโหลด ระบบจะใช้ภาพประกอบสำเร็จรูปแทนให้อัตโนมัติ</p>
+      </div>
+      <div class="flex flex-col-reverse sm:flex-row gap-3">
         <button type="button" id="equipment-modal-cancel" class="btn btn-outline-navy flex-1">ยกเลิก</button>
         <button type="submit" id="equipment-modal-submit" class="btn btn-primary flex-1">บันทึก</button>
       </div>
@@ -315,45 +274,45 @@
   </div>
 </div>
 
-<!-- ===== Modal: โปรไฟล์ของฉัน (เจ้าหน้าที่) ===== -->
-<div id="profile-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-5">
-  <div class="surface rounded-2xl p-5 sm:p-6 w-full max-w-sm">
-    <h3 class="font-display font-semibold text-lg mb-5">โปรไฟล์ของฉัน</h3>
+<!-- ===== Modal: โปรไฟล์ของฉัน ===== -->
+<div id="profile-modal" class="modal-backdrop hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-5">
+  <div class="modal-sheet p-5 sm:p-6 w-full sm:max-w-md">
+    <h3 class="modal-title mb-5">โปรไฟล์ของฉัน</h3>
 
     <div class="flex gap-2 mb-5 border-b border-[var(--line)]">
-      <button data-profile-tab="edit" class="profile-tab-btn px-3 py-2 text-sm font-medium border-b-2 border-[var(--navy)] text-[var(--navy)]">แก้ไขข้อมูล</button>
-      <button data-profile-tab="password" class="profile-tab-btn px-3 py-2 text-sm font-medium border-b-2 border-transparent text-[var(--ink)]/55">เปลี่ยนรหัสผ่าน</button>
+      <button type="button" data-profile-tab="edit" class="profile-tab-btn px-3 py-2.5 text-sm border-b-2 -mb-px border-[var(--navy)] text-[var(--navy)]">แก้ไขข้อมูล</button>
+      <button type="button" data-profile-tab="password" class="profile-tab-btn px-3 py-2.5 text-sm border-b-2 -mb-px border-transparent text-[var(--ink)]/55">เปลี่ยนรหัสผ่าน</button>
     </div>
 
     <!-- แก้ไขชื่อ-นามสกุล/รูปโปรไฟล์ -->
     <form id="profile-form">
-      <div id="profile-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
-      <div id="profile-success" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#eafaf3;color:#1f7a4d;"></div>
+      <div id="profile-error" class="hidden alert alert-error mb-4"></div>
+      <div id="profile-success" class="hidden alert alert-success mb-4"></div>
 
-      <label class="block mb-4">
-        <span class="text-sm font-medium">รูปโปรไฟล์</span>
+      <div class="field text-center">
+        <span class="field-label">รูปโปรไฟล์</span>
         <label for="profile-image-input" id="profile-image-dropzone"
-          class="mt-1.5 flex flex-col items-center justify-center gap-1 w-20 h-20 rounded-full border-2 border-dashed border-[var(--line)] cursor-pointer hover:border-[var(--navy)] transition-colors bg-[var(--paper)] overflow-hidden mx-auto">
-          <svg id="profile-image-placeholder-icon" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" opacity="0.4"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
-          <img id="profile-image-preview" class="hidden w-full h-full object-cover">
+          class="flex flex-col items-center justify-center gap-1 w-24 h-24 rounded-full border-2 border-dashed border-[var(--rose-300)] cursor-pointer bg-[var(--rose-50)] overflow-hidden mx-auto">
+          <svg id="profile-image-placeholder-icon" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="var(--rose-400)" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+          <img id="profile-image-preview" class="hidden w-full h-full object-cover" alt="ตัวอย่างรูปโปรไฟล์">
         </label>
         <input type="file" name="profile_image" accept="image/*" id="profile-image-input" class="hidden">
-        <p class="text-xs text-[var(--ink)]/45 text-center mt-1">คลิกที่วงกลมเพื่อเลือกรูป</p>
-      </label>
+        <p class="hint">คลิกที่วงกลมเพื่อเลือกรูป</p>
+      </div>
 
-      <label class="block mb-3 text-sm text-[var(--ink)]/60">
-        อีเมล (แก้ไขไม่ได้)
-        <input id="profile-email-display" type="text" disabled class="mt-1 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm bg-gray-50 text-[var(--ink)]/50">
+      <label class="field">
+        <span class="field-label">อีเมล (แก้ไขไม่ได้)</span>
+        <input id="profile-email-display" type="text" disabled class="input">
       </label>
-      <label class="block mb-4">
-        <span class="text-sm font-medium">ชื่อ</span>
-        <input type="text" name="first_name" required class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      <label class="field">
+        <span class="field-label">ชื่อ</span>
+        <input type="text" name="first_name" required class="input">
       </label>
-      <label class="block mb-5">
-        <span class="text-sm font-medium">นามสกุล</span>
-        <input type="text" name="last_name" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      <label class="field !mb-6">
+        <span class="field-label">นามสกุล</span>
+        <input type="text" name="last_name" class="input">
       </label>
-      <div class="flex flex-col sm:flex-row gap-3">
+      <div class="flex flex-col-reverse sm:flex-row gap-3">
         <button type="button" id="profile-modal-close" class="btn btn-outline-navy flex-1">ปิด</button>
         <button type="submit" id="profile-submit-btn" class="btn btn-primary flex-1">บันทึก</button>
       </div>
@@ -361,18 +320,18 @@
 
     <!-- เปลี่ยนรหัสผ่าน -->
     <form id="password-form" class="hidden">
-      <div id="password-error" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#fdecec;color:#c33c3c;"></div>
-      <div id="password-success" class="hidden mb-4 text-sm rounded-lg px-3 py-2.5" style="background:#eafaf3;color:#1f7a4d;"></div>
+      <div id="password-error" class="hidden alert alert-error mb-4"></div>
+      <div id="password-success" class="hidden alert alert-success mb-4"></div>
 
-      <label class="block mb-4">
-        <span class="text-sm font-medium">รหัสผ่านปัจจุบัน</span>
-        <input type="password" name="old_password" required class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      <label class="field">
+        <span class="field-label">รหัสผ่านปัจจุบัน</span>
+        <input type="password" name="old_password" required class="input">
       </label>
-      <label class="block mb-5">
-        <span class="text-sm font-medium">รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)</span>
-        <input type="password" name="new_password" required minlength="8" class="mt-1.5 w-full rounded-lg border border-[var(--line)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--navy)]">
+      <label class="field !mb-6">
+        <span class="field-label">รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)</span>
+        <input type="password" name="new_password" required minlength="8" class="input">
       </label>
-      <div class="flex flex-col sm:flex-row gap-3">
+      <div class="flex flex-col-reverse sm:flex-row gap-3">
         <button type="button" id="password-modal-close" class="btn btn-outline-navy flex-1">ปิด</button>
         <button type="submit" class="btn btn-primary flex-1">เปลี่ยนรหัสผ่าน</button>
       </div>
@@ -384,5 +343,6 @@
 <script src="../assets/js/api.js"></script>
 <script src="../assets/js/auth-guard.js"></script>
 <script src="../assets/js/staff-dashboard.js"></script>
+<script src="../assets/js/ui.js" defer></script>
 </body>
 </html>
