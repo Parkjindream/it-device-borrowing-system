@@ -108,6 +108,14 @@ async function loadQueue() {
   data.forEach((booking) => list.appendChild(renderQueueRow(booking, false)));
 }
 
+/** จำนวนวันที่ยืมแบบนับรวมวันเริ่ม เช่น ยืม 16 คืน 17 = 2 วัน (อ่านจาก "YYYY-MM-DD" ตรง ๆ ไม่ผ่าน timezone) */
+function bookingDurationDays(booking) {
+  const [sy, sm, sd] = String(booking.requested_start_date).split("-").map(Number);
+  const [ey, em, ed] = String(booking.requested_end_date).split("-").map(Number);
+  const days = Math.round((new Date(ey, em - 1, ed) - new Date(sy, sm - 1, sd)) / 86400000) + 1;
+  return Number.isFinite(days) ? days : "-";
+}
+
 /**
  * การ์ดแถวเดียวในคิวรับ-คืน
  * isLookupResult = true เมื่อเป็นผลลัพธ์จากช่องค้นหารหัสการจอง (เน้นกรอบให้ต่างจากรายการปกติ)
@@ -152,7 +160,10 @@ function renderQueueRow(booking, isLookupResult = false) {
             ${escapeHtml(booking.student_name || "-")} (${escapeHtml(booking.student_id || "-")}) · รหัส ${escapeHtml(booking.booking_code)}
           </p>
         </div>
-        <p class="text-xs text-[var(--ink)]/55 mt-0.5">กำหนดคืน ${formatDate(booking.requested_end_date)}</p>
+        <p class="text-xs text-[var(--ink)]/55 mt-0.5">
+          วันยืม ${formatDate(booking.requested_start_date)} · กำหนดคืน ${formatDate(booking.requested_end_date)}
+          <span class="text-[var(--ink)]/40">(${bookingDurationDays(booking)} วัน)</span>
+        </p>
       </div>
     </div>
     <div class="flex items-center gap-3 shrink-0">
