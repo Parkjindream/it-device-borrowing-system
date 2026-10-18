@@ -127,7 +127,9 @@ services:
     expose:
       - "8000"
     entrypoint: *backend-entrypoint
-    command: ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60"]
+    # --access-logfile - : แสดงทุกคำขอ (รวมที่สำเร็จ) ใน docker compose logs backend
+    #   รูปแบบ: IP(ของ nginx) "วิธี path" รหัสตอบกลับ เวลาที่ใช้ — ไม่บันทึกรหัสผ่าน/เนื้อหาคำขอ
+    command: ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60", "--access-logfile", "-", "--access-logformat", "%(h)s \"%(r)s\" %(s)s %(L)ss"]
     extra_hosts:
       - "host.docker.internal:host-gateway"   # ใช้ต่อ PostgreSQL บนเครื่อง host (Linux ต้องมีบรรทัดนี้)
 
@@ -209,8 +211,19 @@ services:
 
   # Cloudflare Quick Tunnel (trycloudflare.com) — ไม่ต้องมีบัญชี/token ได้ URL https สุ่มมาให้
   # เหมาะกับทดลอง/สาธิต: URL เปลี่ยนทุกครั้งที่ container นี้เริ่มใหม่ และไม่มีการรับประกัน uptime
-  # ใช้จริงระยะยาวให้เปลี่ยนเป็น tunnel แบบมี token (ผูกโดเมนตัวเอง):
-  #   command: ["tunnel", "--no-autoupdate", "run"]  +  environment: TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+  # ใช้จริงระยะยาว: เปลี่ยนเป็น tunnel แบบมี token (ผูกโดเมนตัวเอง) ได้ลิงก์ถาวร ไม่มีป้าย "Dangerous"
+  #   1) Cloudflare Zero Trust > Networks > Tunnels > Create > ได้ token; เพิ่ม Public hostname ชี้ไป  HTTP  frontend:80
+  #   2) ใส่ CLOUDFLARE_TUNNEL_TOKEN=<token> ใน .env
+  #   3) ลบ service cloudflared ด้านล่างนี้ทั้งก้อน แล้วลบ # หน้า service cloudflared-named แทน
+  #   4) ใน .env ตั้งโดเมนใหม่ให้ครบ (ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS / CORS / ฐาน URL ในลิงก์อีเมล) แล้ว docker compose up -d
+  # cloudflared-named:
+  #   image: cloudflare/cloudflared:2026.9.3
+  #   restart: unless-stopped
+  #   command: ["tunnel", "--no-autoupdate", "run"]
+  #   environment:
+  #     TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?กรุณาตั้งค่า CLOUDFLARE_TUNNEL_TOKEN ในไฟล์ .env}
+  #   depends_on:
+  #     - frontend
   cloudflared:
     image: cloudflare/cloudflared:2026.9.3
     restart: unless-stopped
