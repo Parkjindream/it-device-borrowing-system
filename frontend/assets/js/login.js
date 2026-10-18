@@ -1,3 +1,17 @@
+// ตรวจว่า ?next= ชี้ไปหน้าในเว็บเราเองเท่านั้น (กันถูกพาไปเว็บอื่นหลังล็อกอิน)
+// คืนค่า URL ที่ปลอดภัย หรือ null ถ้าไม่ปลอดภัย/ไม่มีค่า
+function getSafeNext(raw) {
+  if (!raw) return null;
+  try {
+    const url = new URL(raw, location.href);
+    if (url.origin !== location.origin) return null;
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.href;
+  } catch (e) {
+    return null;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // ถ้าล็อกอินอยู่แล้ว ไม่ต้องให้เห็นหน้า login อีก เด้งไป dashboard ตาม role ทันที
   if (Api.isLoggedIn()) {
@@ -32,9 +46,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     Api.setSession(data.token, data.user);
 
-    // ถ้ามาจากหน้าอื่นที่ต้องล็อกอินก่อน (ผ่าน ?next=...) ให้กลับไปหน้านั้น
+    // ถ้ามาจากหน้าอื่นที่ต้องล็อกอินก่อน (ผ่าน ?next=...) ให้กลับไปหน้านั้น (เฉพาะหน้าในเว็บเราเอง)
     const params = new URLSearchParams(location.search);
-    const next = params.get("next");
+    const next = getSafeNext(params.get("next"));
 
     if (next) {
       location.href = next;
