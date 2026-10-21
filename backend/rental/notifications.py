@@ -5,6 +5,9 @@
 (เช่น SMTP ล่ม, ผู้ใช้ไม่มีอีเมล) — จับ exception เองแล้วบันทึกผลลัพธ์ลง
 NotificationLog ไว้เสมอ เพื่อให้เจ้าหน้าที่ตรวจสอบย้อนหลังได้ว่าอีเมลไหนส่งไม่ผ่าน
 
+อีเมลที่ผู้ใช้รอหน้าจอ (จอง/รับ/คืน/พักสิทธิ์/ยกเลิก) ส่งผ่าน _send_background (ไม่ให้หน้าเว็บค้างรอ SMTP)
+ส่วนงานเบื้องหลัง (jobs) ใช้ _send แบบรอจนเสร็จตามเดิม
+
 จุดที่เรียกใช้ไฟล์นี้:
 - services.create_booking()   -> notify_booking_confirmed
 - services.confirm_return()   -> notify_return_success, notify_suspended (ถ้าโดนโทษ)
@@ -17,7 +20,7 @@ import threading
 from django.conf import settings
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
-from django.db import connection
+from django.db import connection, transaction
 from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
@@ -25,9 +28,8 @@ from django.utils.http import urlsafe_base64_encode
 from .models import NotificationLog, PenaltySettings
 
 
-def _send(user, trigger, subject, message, booking=None):
-    """ส่งอีเมล 1 ฉบับ + บันทึกผลลง NotificationLog เสมอไม่ว่าจะสำเร็จหรือไม่"""
-    email_to = user.email
+def _deliver(user_id, email_to, trigger, subject, message, booking_id=None):
+    """ส่งอีเมล 1 ฉบับ + บันทึกผลลง NotificationLog เสมอ (ทำงานแบบรอจนส่งเสร็จ)"""
     is_success = True
     error_message = ""
 
@@ -46,16 +48,46 @@ def _send(user, trigger, subject, message, booking=None):
         except Exception as exc:  # กันทุกกรณี SMTP ล่ม/ตั้งค่าอีเมลผิด ไม่ให้ทั้ง request ล่มตาม
             is_success = False
             error_message = str(exc)
+            _logger.warning("ส่งอีเมลไม่สำเร็จ: %s — %s (เช็คค่า EMAIL_* ใน .env)", email_to, exc)
 
     NotificationLog.objects.create(
-        booking=booking,
-        user=user,
+        booking_id=booking_id,
+        user_id=user_id,
         trigger=trigger,
         email_to=email_to or "",
         is_success=is_success,
         error_message=error_message,
     )
     return is_success
+
+
+def _send(user, trigger, subject, message, booking=None):
+    """ส่งอีเมลแบบรอจนเสร็จ — ใช้กับงานเบื้องหลังที่ไม่มีใครรอหน้าจอ (jobs / scheduler)"""
+    return _deliver(user.pk, user.email, trigger, subject, message, booking.pk if booking else None)
+
+
+def _send_background(user, trigger, subject, message, booking=None):
+    """
+    ส่งอีเมลใน background thread — ใช้กับ request ที่ผู้ใช้รอหน้าจออยู่ (จอง/รับ/คืน/ยกเลิก)
+    ไม่ให้ผู้ใช้ต้องรอ SMTP (เดิมรอ 5-6 วินาทีต่อครั้ง) ผลส่งยังบันทึกลง NotificationLog เหมือนเดิม
+    - เริ่มส่งหลัง transaction ของ request commit แล้ว (ไม่งั้น log จะอ้างถึงการจองที่ยังไม่ถูกบันทึก)
+    - ตอนรันเทสต์ (EMAIL_BACKEND = locmem) ส่งแบบปกติเพื่อให้เทสต์ตรวจผลได้ทันที
+    """
+    args = (user.pk, user.email, trigger, subject, message, booking.pk if booking else None)
+
+    if settings.EMAIL_BACKEND == "django.core.mail.backends.locmem.EmailBackend":
+        _deliver(*args)
+        return
+
+    def run():
+        try:
+            _deliver(*args)
+        except Exception:  # กัน thread ตายเงียบ ๆ
+            _logger.exception("ส่งอีเมลเบื้องหลังไม่สำเร็จ: %s", args[1])
+        finally:
+            connection.close()
+
+    transaction.on_commit(lambda: threading.Thread(target=run, daemon=True).start())
 
 
 def notify_booking_confirmed(booking):
@@ -69,7 +101,7 @@ def notify_booking_confirmed(booking):
         f"หากไม่มารับภายในเวลาดังกล่าว ระบบจะยกเลิกการจองนี้ให้อัตโนมัติ\n\n"
         f"กำหนดคืน: {booking.requested_end_date:%d/%m/%Y}"
     )
-    _send(booking.student, NotificationLog.Trigger.BOOKING_CONFIRMED, subject, message, booking=booking)
+    _send_background(booking.student, NotificationLog.Trigger.BOOKING_CONFIRMED, subject, message, booking=booking)
 
 
 def notify_pickup_success(booking):
@@ -85,7 +117,7 @@ def notify_pickup_success(booking):
         f"{note_text}\n"
         f"ระบบจะส่งอีเมลเตือนให้อีกครั้งก่อนถึงกำหนดคืน"
     )
-    _send(booking.student, NotificationLog.Trigger.PICKUP_SUCCESS, subject, message, booking=booking)
+    _send_background(booking.student, NotificationLog.Trigger.PICKUP_SUCCESS, subject, message, booking=booking)
 
 
 def notify_reminder_due_soon(booking):
@@ -143,7 +175,7 @@ def notify_return_success(booking, is_damaged=False):
         f"{note_text}\n"
         f"ขอบคุณที่ใช้บริการศูนย์ยืม-คืนอุปกรณ์ไอที"
     )
-    _send(booking.student, NotificationLog.Trigger.RETURN_SUCCESS, subject, message, booking=booking)
+    _send_background(booking.student, NotificationLog.Trigger.RETURN_SUCCESS, subject, message, booking=booking)
 
 
 def notify_suspended(student, booking=None):
@@ -159,7 +191,7 @@ def notify_suspended(student, booking=None):
         f"คุณยังคงเข้าสู่ระบบและดูประวัติการยืมเดิมได้ตามปกติ "
         f"หากมีข้อสงสัยกรุณาติดต่อเจ้าหน้าที่ห้องโสตทัศนศึกษา"
     )
-    _send(student, NotificationLog.Trigger.SUSPENDED, subject, message, booking=booking)
+    _send_background(student, NotificationLog.Trigger.SUSPENDED, subject, message, booking=booking)
 
 
 def notify_auto_cancelled(booking):
@@ -183,7 +215,7 @@ def notify_cancelled_by_student(booking):
     )
     # ถ้ายังไม่ได้เพิ่ม Trigger.CANCELLED_BY_STUDENT ใน models.py จะใช้ AUTO_CANCELLED แทนชั่วคราว (ไม่ทำให้ระบบพัง)
     trigger = getattr(NotificationLog.Trigger, "CANCELLED_BY_STUDENT", NotificationLog.Trigger.AUTO_CANCELLED)
-    _send(booking.student, trigger, subject, message, booking=booking)
+    _send_background(booking.student, trigger, subject, message, booking=booking)
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +254,19 @@ def notify_account_created(user, base_url):
     )
     trigger = getattr(NotificationLog.Trigger, "ACCOUNT_CREATED", NotificationLog.Trigger.PASSWORD_RESET_REQUESTED)
     _send(user, trigger, subject, message)
+
+
+def notify_password_reset(user, reset_link):
+    """
+    ส่งอีเมลลิงก์ตั้งรหัสผ่านใหม่ (เบื้องหลัง) — ผู้เรียกใช้ฟังก์ชันนี้ตอบกลับทันทีเสมอ
+    เวลาตอบจึงไม่ต่างกันระหว่างอีเมลที่มี/ไม่มีในระบบ (กันคนจับเวลาเดารายชื่อผู้ใช้)
+    """
+    subject = "ตั้งรหัสผ่านใหม่ - ศูนย์ยืม-คืนอุปกรณ์ไอที"
+    message = (
+        f"คลิกลิงก์นี้เพื่อตั้งรหัสผ่านใหม่:\n{reset_link}\n\n"
+        "ลิงก์นี้จะหมดอายุใน 24 ชั่วโมง หากคุณไม่ได้ทำรายการนี้ กรุณาเพิกเฉยอีเมลนี้"
+    )
+    _send_background(user, NotificationLog.Trigger.PASSWORD_RESET_REQUESTED, subject, message)
 
 
 def notify_accounts_created_background(users, base_url):
