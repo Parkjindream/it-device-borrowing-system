@@ -12,6 +12,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # --- ความปลอดภัยพื้นฐาน ---
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="dev-only-secret-change-me")
 DEBUG = config("DEBUG", default=True, cast=bool)
+# กันเผลอเปิดใช้งานจริงด้วยคีย์ตัวอย่าง: ใครรู้คีย์นี้ปลอมลิงก์ตั้งรหัสผ่านของบัญชีไหนก็ได้ (รวมเจ้าหน้าที่)
+if not DEBUG and SECRET_KEY == "dev-only-secret-change-me":
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured("ตั้ง DJANGO_SECRET_KEY ในไฟล์ .env เป็นค่าสุ่มของตัวเองก่อนใช้งานจริง (ห้ามใช้ค่าตัวอย่าง)")
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 
 # ต้องระบุ origin ของเว็บที่เข้าหน้า /admin/ ผ่าน https หรือหลัง reverse proxy
@@ -154,7 +159,7 @@ REST_FRAMEWORK = {
         "password_reset_confirm": "10/hour",
         "public": "120/min",
     },
-    # จำนวน proxy ที่อยู่หน้า Django (Docker + nginx = 1) เพื่ออ่าน IP จริงของผู้ใช้
+    # จำนวน proxy ที่อยู่หน้า Django (docker-compose ตั้ง 2 = cloudflared + nginx) เพื่ออ่าน IP จริงของผู้ใช้
     "NUM_PROXIES": config("NUM_PROXIES", default=0, cast=int),
 }
 
