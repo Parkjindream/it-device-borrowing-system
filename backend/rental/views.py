@@ -26,7 +26,7 @@ from .services import (
     BookingError, create_booking, cancel_booking, confirm_pickup, confirm_return, unsuspend_student,
 )
 from .jobs import cleanup_old_booking_history, cleanup_old_notification_logs
-from .notifications import build_frontend_base_url, notify_accounts_created_background
+from .notifications import build_frontend_base_url, notify_accounts_created_background, notify_password_reset
 from .serializers import (
     UserSerializer,
     ProfileUpdateSerializer,
@@ -166,37 +166,14 @@ class PasswordResetRequestView(APIView):
         # log ระดับ console เสมอ (ไม่ส่งกลับไปให้ client เห็น) ไว้ให้เจ้าหน้าที่ไล่ปัญหาจาก terminal ได้ตรงจุด
         logger.info("ขอลิงก์ตั้งรหัสผ่านใหม่: email=%s พบผู้ใช้ในระบบ=%s", email, user is not None)
 
-        email_sent = False
         if user is not None:
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = token_generator.make_token(user)
             # ไม่ได้ตั้ง URL ไว้ -> ใช้โดเมนที่ผู้ใช้เข้ามา (Host ผ่าน ALLOWED_HOSTS แล้ว และคนนอกเข้าได้ทาง tunnel ทางเดียว)
             reset_page = settings.FRONTEND_RESET_PASSWORD_URL or request.build_absolute_uri("/reset-password.html")
             reset_link = f"{reset_page}?uid={uid}&token={token}"
-            try:
-                send_mail(
-                    subject="ตั้งรหัสผ่านใหม่ - ศูนย์ยืม-คืนอุปกรณ์ไอที",
-                    message=(
-                        f"คลิกลิงก์นี้เพื่อตั้งรหัสผ่านใหม่:\n{reset_link}\n\n"
-                        "ลิงก์นี้จะหมดอายุใน 24 ชั่วโมง หากคุณไม่ได้ทำรายการนี้ กรุณาเพิกเฉยอีเมลนี้"
-                    ),
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[email],
-                    fail_silently=False,
-                )
-                email_sent = True
-                logger.info("ส่งอีเมลตั้งรหัสผ่านใหม่สำเร็จ: %s (ลิงก์: %s)", email, reset_link)
-            except Exception:
-                logger.exception("ส่งอีเมลรีเซ็ตรหัสผ่านไม่สำเร็จ (เช็คค่า EMAIL_* ใน .env): %s", email)
-
-            NotificationLog.objects.create(
-                booking=None,
-                user=user,
-                trigger=NotificationLog.Trigger.PASSWORD_RESET_REQUESTED,
-                email_to=email,
-                is_success=email_sent,
-                error_message="" if email_sent else "ส่งอีเมลไม่สำเร็จ ดู log ฝั่ง backend",
-            )
+            # ส่งเบื้องหลัง + บันทึก NotificationLog ให้เองใน notifications (ไม่ log ลิงก์ที่มี token ลง console)
+            notify_password_reset(user, reset_link)
 
         # ตอบข้อความเดียวกันเสมอ กันคนแอบเดาว่าอีเมลไหนมีอยู่ในระบบ
         return Response({"detail": "หากอีเมลนี้มีอยู่ในระบบ เราได้ส่งลิงก์ตั้งรหัสผ่านไปให้แล้ว"})
@@ -715,7 +692,10 @@ class StaffStudentDetailView(APIView):
         allowed_fields = {"first_name", "last_name", "student_id"}
         data = {k: v for k, v in request.data.items() if k in allowed_fields}
 
-        student_id = data.get("student_id", "").strip() if "student_id" in data else None
+        student_id = None
+        if "student_id" in data:
+            raw_student_id = data["student_id"]
+            student_id = str(raw_student_id).strip() if raw_student_id is not None else ""
         if student_id:
             if User.objects.filter(student_id=student_id).exclude(pk=student.pk).exists():
                 return Response({"detail": "รหัสนักศึกษานี้ถูกใช้งานโดยคนอื่นแล้ว"}, status=status.HTTP_400_BAD_REQUEST)
