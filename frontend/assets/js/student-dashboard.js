@@ -11,13 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("welcome-text").textContent =
     `สวัสดี, ${currentUser.first_name || currentUser.username}`;
 
-  if (currentUser.is_suspended) {
-    const banner = document.getElementById("suspended-banner");
-    banner.textContent = currentUser.suspended_until
-      ? `บัญชีของคุณถูกพักสิทธิ์การจองอุปกรณ์ใหม่ถึงวันที่ ${formatDate(currentUser.suspended_until)}`
-      : "บัญชีของคุณถูกพักสิทธิ์การจองอุปกรณ์ใหม่ชั่วคราว";
-    banner.classList.remove("hidden");
-  }
+  renderSuspendedBanner();
 
   document.getElementById("logout-btn").addEventListener("click", logout);
   updateNavbarAvatar();
@@ -32,7 +26,58 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("search-input").addEventListener("input", debounce(loadEquipment, 350));
   document.getElementById("category-select").addEventListener("change", loadEquipment);
+  startLiveRefresh();
 });
+
+/** พักสิทธิ์ "จริง ณ ตอนนี้" (ใช้ค่าที่ backend คำนวณให้ ซึ่งคำนึงถึงวันหมดพักสิทธิ์แล้ว) */
+function isSuspendedNow() {
+  if (!currentUser) return false;
+  return Boolean(currentUser.is_currently_suspended ?? currentUser.is_suspended);
+}
+
+function renderSuspendedBanner() {
+  const banner = document.getElementById("suspended-banner");
+  if (!banner) return;
+  if (isSuspendedNow()) {
+    banner.textContent = currentUser.suspended_until
+      ? `บัญชีของคุณถูกพักสิทธิ์การจองอุปกรณ์ใหม่ถึงวันที่ ${formatDate(currentUser.suspended_until)}`
+      : "บัญชีของคุณถูกพักสิทธิ์การจองอุปกรณ์ใหม่ชั่วคราว";
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+  }
+}
+
+/**
+ * อัปเดตหน้าเองทุก 30 วินาที (และทันทีที่กลับมาเปิดแท็บ) — ไม่ต้องกดรีเฟรชเอง
+ * เช่น เจ้าหน้าที่กดรับคืนแล้ว ปุ่ม "จอง" ที่ถูกล็อกจะปลดเอง / ถูกพักสิทธิ์แล้วแถบเตือนขึ้นเอง
+ * ไม่รีเฟรชทับตอนมีหน้าต่างจอง/โปรไฟล์เปิดอยู่ (กันข้อมูลที่กำลังกรอกหาย)
+ */
+const LIVE_REFRESH_MS = 30000;
+let liveRefreshBusy = false;
+
+async function liveRefreshOnce() {
+  if (liveRefreshBusy || document.hidden) return;
+  if (document.querySelector(".modal-backdrop:not(.hidden)")) return;
+  liveRefreshBusy = true;
+  try {
+    const me = await Api.get("/auth/me/");
+    if (me.ok && me.data) {
+      currentUser = me.data;
+      renderSuspendedBanner();
+    }
+    const historyTab = document.getElementById("tab-history");
+    if (historyTab && !historyTab.classList.contains("hidden")) await loadBookingHistory();
+    else await loadEquipment();
+  } finally {
+    liveRefreshBusy = false;
+  }
+}
+
+function startLiveRefresh() {
+  setInterval(liveRefreshOnce, LIVE_REFRESH_MS);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) liveRefreshOnce(); });
+}
 
 function setupTabs() {
   document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -119,7 +164,7 @@ function renderEquipmentCard(eq) {
   card.className = "surface rounded-2xl p-5 flex flex-col";
 
   const outOfStock = eq.available_units === 0;
-  const disableBooking = outOfStock || currentUser.is_suspended || Boolean(activeBooking);
+  const disableBooking = outOfStock || isSuspendedNow() || Boolean(activeBooking);
 
   card.innerHTML = `
     <img src="${equipmentImageSrc(eq)}" alt="${eq.name}" class="w-full h-32 object-contain rounded-lg bg-[var(--paper)] p-2 mb-3">
