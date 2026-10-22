@@ -21,13 +21,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupProfileModal();
 
   document.getElementById("status-filter").addEventListener("change", loadQueue);
+  setupInventoryFilter();
   await loadSummary();
   await loadQueue();
+  StaffStats.start();
 });
 
 /* ========================= การ์ดสรุปภาพรวม (โมดูล G) ========================= */
 
 async function loadSummary() {
+  if (typeof loadStats === "function") loadStats(); // กราฟสถิติอัปเดตพร้อมการ์ดสรุปเสมอ
   const { ok, data } = await Api.get("/staff/dashboard-summary/");
   if (!ok) return;
 
@@ -62,6 +65,7 @@ function setupTabs() {
         document.getElementById(`tab-${name}`).classList.toggle("hidden", tab !== name);
       });
 
+      if (tab === "queue") { loadSummary(); loadQueue(); }
       if (tab === "inventory") loadInventory();
       if (tab === "students") loadStudentList();
       if (tab === "settings") { loadPenaltySettings(); loadCategoryList(); }
@@ -255,22 +259,44 @@ async function loadInventory() {
 
   data.forEach((eq) => {
     const row = document.createElement("div");
-    row.className = "surface rounded-xl p-4 flex flex-wrap items-center justify-between gap-3";
+    row.className = "surface rounded-xl inv-card" + (eq.is_active ? "" : " is-inactive");
+
+    const total = Number(eq.total_units) || 0;
+    const avail = Number(eq.available_units) || 0;
+    const pct = total > 0 ? Math.round((avail / total) * 100) : 0;
+    const level = total === 0 || avail === 0 ? "out" : (pct <= 34 ? "low" : "ok");
+    const levelText = total === 0 ? "ยังไม่มีเครื่อง" : (avail === 0 ? "หมดชั่วคราว" : (level === "low" ? "เหลือน้อย" : "พร้อมให้ยืม"));
+    const maxDays = eq.max_borrow_days ? ` · ยืมได้สูงสุด ${Number(eq.max_borrow_days)} วัน` : "";
+
     row.innerHTML = `
-      <div class="flex items-center gap-3 min-w-0">
-        <img src="${equipmentImageSrc(eq)}" alt="${escapeHtml(eq.name)}" class="w-12 h-12 rounded-lg object-contain bg-[var(--paper)] p-1 shrink-0">
-        <div class="min-w-0">
-          <p class="font-display font-medium text-sm truncate">${escapeHtml(eq.name)} ${eq.is_active ? "" : '<span class="text-xs text-[#c33c3c]">(ปิดใช้งาน)</span>'}</p>
-          <p class="text-xs text-[var(--ink)]/55 mt-0.5">${escapeHtml(eq.category?.name ?? "")} · เหลือ ${eq.available_units}/${eq.total_units} เครื่อง</p>
-          <p class="text-xs text-[var(--ink)]/45 mt-0.5 truncate inventory-specs hidden"></p>
+      <div class="inv-head">
+        <img src="${equipmentImageSrc(eq)}" alt="${escapeHtml(eq.name)}" class="inv-img">
+        <div class="inv-info">
+          <div class="inv-title">
+            <p class="inv-name" title="${escapeHtml(eq.name)}">${escapeHtml(eq.name)}</p>
+            <span class="inv-badge ${eq.is_active ? "inv-badge-on" : "inv-badge-off"}">${eq.is_active ? "เปิดใช้งาน" : "ปิดใช้งาน"}</span>
+          </div>
+          <p class="inv-cat">${escapeHtml(eq.category?.name ?? "")}${maxDays}</p>
+          <p class="inventory-specs inv-specs hidden"></p>
         </div>
       </div>
-        <div class="flex gap-2 flex-wrap">
-        <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs edit-equipment-btn">แก้ไข/เปลี่ยนรูป</button>
-        <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs add-unit-btn">+ เพิ่มเครื่อง</button>
-        <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs remove-unit-btn">- ลดเครื่อง</button>
-        <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs toggle-active-btn">${eq.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button>
-        <button class="btn btn-outline-navy !py-1.5 !px-3 text-xs delete-equipment-btn" style="color:#c33c3c;border-color:#c33c3c;">ลบทั้งรุ่น</button>
+
+      <div class="inv-stock inv-stock-${level}">
+        <div class="inv-stock-top">
+          <span class="inv-stock-count"><b>${avail}</b> / ${total} เครื่อง</span>
+          <span class="inv-stock-state">${levelText}</span>
+        </div>
+        <div class="inv-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${avail}" aria-label="จำนวนเครื่องที่ว่าง"><i style="width:${pct}%"></i></div>
+      </div>
+
+      <div class="inv-actions">
+        <button class="btn btn-primary edit-equipment-btn">แก้ไข</button>
+        <div class="inv-stepper" role="group" aria-label="จำนวนเครื่อง">
+          <button class="btn btn-outline-navy remove-unit-btn" title="ลดเครื่องที่ว่างอยู่ 1 ชิ้น">− ลดเครื่อง</button>
+          <button class="btn btn-outline-navy add-unit-btn" title="เพิ่มเครื่องใหม่ 1 ชิ้น">+ เพิ่มเครื่อง</button>
+        </div>
+        <button class="btn btn-outline-navy toggle-active-btn">${eq.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button>
+        <button class="btn btn-outline-navy delete-equipment-btn inv-danger">ลบทั้งรุ่น</button>
       </div>
     `;
 
@@ -338,8 +364,43 @@ async function loadInventory() {
       await loadInventory();
     });
 
+    row.dataset.search = `${eq.name || ""} ${eq.category?.name ?? ""}`.toLowerCase();
+    row.dataset.level = eq.is_active ? level : "off";
     list.appendChild(row);
   });
+  applyInventoryFilter();
+}
+
+/** ช่องค้นหารุ่นในแท็บคลังอุปกรณ์ (กรองในหน้าเว็บ ไม่เรียก API) + สรุปจำนวนใต้ช่องค้นหา */
+function setupInventoryFilter() {
+  const input = document.getElementById("inventory-search-input");
+  if (input) input.addEventListener("input", applyInventoryFilter);
+}
+
+function applyInventoryFilter() {
+  const input = document.getElementById("inventory-search-input");
+  const q = (input ? input.value : "").trim().toLowerCase();
+  const cards = [...document.querySelectorAll("#inventory-list > .inv-card")];
+  let shown = 0;
+  cards.forEach((card) => {
+    const match = !q || (card.dataset.search || "").includes(q);
+    card.classList.toggle("hidden", !match);
+    if (match) shown += 1;
+  });
+
+  const empty = document.getElementById("inventory-empty");
+  if (empty) empty.classList.toggle("hidden", cards.length === 0 || shown > 0);
+
+  const summary = document.getElementById("inventory-summary");
+  if (summary) {
+    const count = (lv) => cards.filter((c) => c.dataset.level === lv).length;
+    const attention = count("low") + count("out");
+    summary.innerHTML = cards.length
+      ? `${q ? `พบ <b>${shown}</b> จาก ` : "ทั้งหมด "}<b>${cards.length}</b> รุ่น`
+        + (attention ? ` · <span class="inv-summary-warn">ต้องดูแล ${attention} รุ่น</span>` : "")
+        + (count("off") ? ` · ปิดใช้งาน ${count("off")}` : "")
+      : "";
+  }
 }
 
 /** id ของอุปกรณ์ที่กำลังแก้ไข (null = เพิ่มรุ่นใหม่) */
