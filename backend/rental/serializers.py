@@ -7,7 +7,13 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .models import (
-    User, EquipmentCategory, Equipment, EquipmentUnit, Booking, PenaltySettings, NotificationLog,
+    Booking,
+    Equipment,
+    EquipmentCategory,
+    EquipmentUnit,
+    NotificationLog,
+    PenaltySettings,
+    User,
 )
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
@@ -446,5 +452,7 @@ class NotificationLogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NotificationLog
-        fields = ["id", "trigger", "trigger_label", "email_to", "is_success", "error_message", "booking_code", "sent_at"]
+        fields = [
+            "id", "trigger", "trigger_label", "email_to", "is_success", "error_message", "booking_code", "sent_at",
+        ]
         read_only_fields = fields

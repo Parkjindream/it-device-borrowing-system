@@ -5,9 +5,9 @@
 no-show, แจ้งเตือนอีเมล, สิทธิ์การเข้าถึง (นักศึกษา/เจ้าหน้าที่), โปรไฟล์, และกฎ "สแกน QR ≠ ยืนยัน"
 (Django test runner จะสร้างฐานข้อมูลทดสอบแยกให้เอง และใช้ email backend จำลอง ไม่ส่งอีเมลจริง)
 """
-from datetime import datetime, time as dtime, timedelta
-
 import os
+from datetime import datetime, timedelta
+from datetime import time as dtime
 from unittest import mock
 
 from django.core import mail
@@ -18,7 +18,13 @@ from rest_framework.test import APIClient
 
 from .jobs import cancel_expired_bookings, lift_expired_suspensions, run_daily_due_date_checks
 from .models import (
-    Booking, Equipment, EquipmentCategory, EquipmentUnit, NotificationLog, PenaltySettings, User,
+    Booking,
+    Equipment,
+    EquipmentCategory,
+    EquipmentUnit,
+    NotificationLog,
+    PenaltySettings,
+    User,
 )
 from .services import BookingError, confirm_pickup, confirm_return, create_booking
 
@@ -93,11 +99,15 @@ class BookingFlowTests(BaseTestCase):
         with self.assertRaises(BookingError):  # คืนก่อนวันเริ่ม
             create_booking(self.student, self.equipment.id, self.today, self.today - timedelta(days=1))
         with self.assertRaises(BookingError):  # เริ่มยืมย้อนหลัง
-            create_booking(self.student, self.equipment.id, self.today - timedelta(days=1), self.today + timedelta(days=2))
+            create_booking(
+                self.student, self.equipment.id, self.today - timedelta(days=1), self.today + timedelta(days=2)
+            )
         with self.assertRaises(BookingError):  # ยืมนานเกินกำหนดของรุ่นนี้
             create_booking(self.student, self.equipment.id, self.today, self.today + timedelta(days=30))
         with self.assertRaises(BookingError):  # จองล่วงหน้านานเกินไป
-            create_booking(self.student, self.equipment.id, self.today + timedelta(days=30), self.today + timedelta(days=32))
+            create_booking(
+                self.student, self.equipment.id, self.today + timedelta(days=30), self.today + timedelta(days=32)
+            )
 
     def test_single_day_booking_allowed(self):
         # นับวันแบบรวมวันเริ่ม: เริ่มและคืนวันเดียวกัน = ยืม 1 วัน
@@ -270,7 +280,9 @@ class JobTests(BaseTestCase):
 
 class ApiAndPermissionTests(BaseTestCase):
     def test_login_returns_token_and_user(self):
-        resp = APIClient().post("/auth/login/", {"email": "s1@example.ac.th", "password": "Pass!word123"}, format="json")
+        resp = APIClient().post(
+            "/auth/login/", {"email": "s1@example.ac.th", "password": "Pass!word123"}, format="json"
+        )
         self.assertEqual(resp.status_code, 200)
         self.assertIn("token", resp.data)
         self.assertEqual(resp.data["user"]["role"], "student")
@@ -338,9 +350,13 @@ class ApiAndPermissionTests(BaseTestCase):
 
     def test_change_password(self):
         client = self.client_for(self.student)
-        bad = client.post("/auth/change-password/", {"old_password": "nope", "new_password": "NewPass!word456"}, format="json")
+        bad = client.post(
+            "/auth/change-password/", {"old_password": "nope", "new_password": "NewPass!word456"}, format="json"
+        )
         self.assertEqual(bad.status_code, 400)
-        ok = client.post("/auth/change-password/", {"old_password": "Pass!word123", "new_password": "NewPass!word456"}, format="json")
+        ok = client.post(
+            "/auth/change-password/", {"old_password": "Pass!word123", "new_password": "NewPass!word456"}, format="json"
+        )
         self.assertEqual(ok.status_code, 200)
         self.student.refresh_from_db()
         self.assertTrue(self.student.check_password("NewPass!word456"))
@@ -412,7 +428,9 @@ class ApiAndPermissionTests(BaseTestCase):
         }, format="json")
         self.assertEqual(resp.status_code, 201)
 
-        resp = client.patch("/staff/penalty-settings/", {"suspension_days": 5, "overdue_days_threshold": 2}, format="json")
+        resp = client.patch(
+            "/staff/penalty-settings/", {"suspension_days": 5, "overdue_days_threshold": 2}, format="json"
+        )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(PenaltySettings.get_solo().suspension_days, 5)
         bad = client.patch("/staff/penalty-settings/", {"suspension_days": 0}, format="json")

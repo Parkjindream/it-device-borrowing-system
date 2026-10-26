@@ -3,14 +3,12 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.core.mail import send_mail
 from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-
-from rest_framework import generics, filters, status
+from rest_framework import filters, generics, status
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -18,36 +16,47 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .models import (
-    User, EquipmentCategory, Equipment, EquipmentUnit, Booking, PenaltySettings, NotificationLog,
-)
-from .permissions import IsStaffUser, IsStudentUser
-from .services import (
-    BookingError, create_booking, cancel_booking, confirm_pickup, confirm_return, unsuspend_student,
-)
 from .jobs import cleanup_old_booking_history, cleanup_old_notification_logs
+from .models import (
+    Booking,
+    Equipment,
+    EquipmentCategory,
+    EquipmentUnit,
+    NotificationLog,
+    PenaltySettings,
+    User,
+)
 from .notifications import build_frontend_base_url, notify_accounts_created_background, notify_password_reset
+from .permissions import IsStaffUser, IsStudentUser
 from .serializers import (
-    UserSerializer,
-    ProfileUpdateSerializer,
-    ChangePasswordSerializer,
-    LoginSerializer,
-    PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer,
-    EquipmentCategorySerializer,
-    EquipmentListSerializer,
-    EquipmentDetailSerializer,
-    EquipmentWriteSerializer,
-    EquipmentUnitSerializer,
-    PublicEquipmentSerializer,
     BookingCreateSerializer,
     BookingSerializer,
+    ChangePasswordSerializer,
     ConfirmPickupSerializer,
     ConfirmReturnSerializer,
+    EquipmentCategorySerializer,
+    EquipmentDetailSerializer,
+    EquipmentListSerializer,
+    EquipmentUnitSerializer,
+    EquipmentWriteSerializer,
+    LoginSerializer,
+    NotificationLogSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
     PenaltySettingsSerializer,
+    ProfileUpdateSerializer,
+    PublicEquipmentSerializer,
     StaffStudentSerializer,
     StudentCreateSerializer,
-    NotificationLogSerializer,
+    UserSerializer,
+)
+from .services import (
+    BookingError,
+    cancel_booking,
+    confirm_pickup,
+    confirm_return,
+    create_booking,
+    unsuspend_student,
 )
 
 logger = logging.getLogger(__name__)

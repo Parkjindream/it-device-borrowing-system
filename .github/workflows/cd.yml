@@ -1,0 +1,116 @@
+# ============================================================
+# CD (Continuous Deployment) — สร้าง image + พิสูจน์ว่าติดตั้งได้จริง
+# ============================================================
+# ทำงานเมื่อโค้ดเข้าสู่ main (หรือสร้าง tag เวอร์ชัน v*) และสั่งรันเองได้จากหน้า Actions
+# มี 2 งาน:
+#   build-and-push  — build Docker image ของ backend + frontend แล้ว push ขึ้น
+#                     GitHub Container Registry (ghcr.io) → เห็นผลในแท็บ Packages ของ repo
+#   smoke-deploy    — ยกทั้งระบบขึ้นด้วย docker compose จริง แล้วยิง request เข้าไปจริง
+#                     เพื่อ "แสดงผลลัพธ์การติดตั้ง" ว่าระบบ start แล้วตอบ API ได้ (ติดตั้งสำเร็จ)
+
+name: CD
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  workflow_dispatch: {}   # กดปุ่ม "Run workflow" เองได้ (เหมาะกับตอนสาธิตหน้าชั้น)
+
+jobs:
+  # ---------- งานที่ 1: build + push image ขึ้น registry ----------
+  build-and-push:
+    name: Build & Push images (GHCR)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write   # ต้องมีสิทธิ์นี้จึง push ขึ้น ghcr.io ได้
+
+    strategy:
+      matrix:
+        component: [backend, frontend]   # build ทีละตัวแบบขนาน
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ชื่อ owner บน GHCR ต้องเป็นตัวพิมพ์เล็กทั้งหมด
+      - name: เตรียมชื่อ image (ตัวพิมพ์เล็ก)
+        id: prep
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: ล็อกอินเข้า GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: build และ push ${{ matrix.component }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.component }}
+          push: true
+          tags: |
+            ghcr.io/${{ steps.prep.outputs.owner }}/it-device-borrowing-system-${{ matrix.component }}:latest
+            ghcr.io/${{ steps.prep.outputs.owner }}/it-device-borrowing-system-${{ matrix.component }}:${{ github.sha }}
+
+  # ---------- งานที่ 2: ติดตั้งจริงด้วย docker compose แล้วทดสอบว่าใช้งานได้ ----------
+  smoke-deploy:
+    name: Smoke deploy (docker compose up + ทดสอบ API)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # สร้างไฟล์ .env สำหรับการติดตั้งทดสอบ (ค่าสุ่ม/ค่าตัวอย่าง ไม่ใช่ความลับจริง)
+      - name: เตรียมไฟล์ .env
+        run: |
+          cat > .env <<'EOF'
+          DJANGO_SECRET_KEY=ci-smoke-deploy-$RANDOM-not-a-real-secret-key-abcdefghijklmnop
+          DEBUG=False
+          ALLOWED_HOSTS=localhost,127.0.0.1
+          CSRF_TRUSTED_ORIGINS=http://localhost:8080
+          DB_NAME=it_lending_db
+          DB_USER=it_lending_user
+          DB_PASSWORD=ci_db_password_123
+          MINIO_ROOT_USER=ci-minio-admin
+          MINIO_ROOT_PASSWORD=ci-minio-password-123
+          HTTP_PORT=8080
+          SECURE_COOKIES=False
+          EOF
+          echo "สร้าง .env สำหรับทดสอบเรียบร้อย"
+
+      # ยกเฉพาะ frontend + สายพึ่งพา (db, minio, migrate, backend) — ไม่ต้องยก cloudflared
+      # เพราะ smoke test ยิงเข้า localhost ตรง ๆ ไม่ต้องผ่าน tunnel ออกอินเทอร์เน็ต
+      - name: docker compose up (build + start)
+        run: docker compose up -d --build frontend
+
+      - name: รอให้ระบบพร้อมและทดสอบ endpoint สาธารณะ
+        run: |
+          echo "รอ backend/ frontend พร้อมรับ request ..."
+          for i in $(seq 1 40); do
+            code=$(curl -s -o /tmp/resp.json -w "%{http_code}" http://localhost:8080/api/public/equipment/ || true)
+            if [ "$code" = "200" ]; then
+              echo "✅ ติดตั้งสำเร็จ: GET /api/public/equipment/ ตอบ 200"
+              head -c 400 /tmp/resp.json; echo
+              exit 0
+            fi
+            echo "  ครั้งที่ $i: ได้รหัส $code — รอต่อ ..."
+            sleep 3
+          done
+          echo "❌ ระบบไม่ตอบ 200 ภายในเวลาที่กำหนด"
+          exit 1
+
+      # เก็บ log ไว้ดูย้อนหลัง (ใช้เป็นหลักฐาน "ผลลัพธ์การติดตั้ง" แนบในสไลด์ได้)
+      - name: เก็บ log ของทุก service เป็น artifact
+        if: always()
+        run: docker compose logs --no-color > docker-compose-logs.txt 2>&1 || true
+
+      - name: อัปโหลด log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-logs
+          path: docker-compose-logs.txt
+
+      - name: เก็บกวาด (docker compose down)
+        if: always()
+        run: docker compose down -v || true
