@@ -1,9 +1,9 @@
-from django.contrib import admin
-from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
 from django.core.files.storage import default_storage
 from django.http import FileResponse, Http404
+from django.urls import include, path
 
 admin.site.site_header = "ศูนย์ยืม-คืนอุปกรณ์ไอที — ผู้ดูแลระบบ"
 admin.site.site_title = "ผู้ดูแลระบบ"

@@ -37,7 +37,8 @@ class Command(BaseCommand):
             return
 
         self.stdout.write(self.style.SUCCESS(
-            f"เริ่มรัน scheduler (เช็คทุก {options['interval']} วินาที, งานรายวันหลัง {options['daily_hour']:02d}:00) — กด Ctrl+C เพื่อหยุด"
+            f"เริ่มรัน scheduler (เช็คทุก {options['interval']} วินาที, "
+            f"งานรายวันหลัง {options['daily_hour']:02d}:00) — กด Ctrl+C เพื่อหยุด"
         ))
         last_daily_date = None
         while True:

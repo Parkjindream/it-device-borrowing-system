@@ -1,0 +1,102 @@
+# ============================================================
+# CI (Continuous Integration) — ตรวจคุณภาพโค้ดและรันเทสต์ทุกครั้งที่มีการเปลี่ยนแปลง
+# ============================================================
+# ทำงานอัตโนมัติเมื่อ push หรือเปิด Pull Request — ถ้า job ไหนแดง (ล้มเหลว)
+# จะเห็นเครื่องหมายกากบาทบน commit/PR นั้นทันที กันโค้ดเสียหลุดเข้า main
+#
+# มี 2 งานหลัก:
+#   lint  — ตรวจมาตรฐาน PEP 8 + จับ bug เบื้องต้นด้วย ruff
+#   test  — รันชุดทดสอบอัตโนมัติ 38 เคส กับฐานข้อมูล PostgreSQL จริง
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+# ยกเลิกรอบเก่าถ้ามี push ใหม่เข้ามาบน ref เดียวกัน (ประหยัดเวลา/โควต้า runner)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------- งานที่ 1: ตรวจคุณภาพโค้ด ----------
+  lint:
+    name: Lint (ruff / PEP 8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ติดตั้ง Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: ติดตั้ง ruff
+        run: pip install ruff==0.17.2
+
+      # อ่านการตั้งค่าจาก backend/pyproject.toml (select = E, W, F, I, UP / line-length 120)
+      - name: ruff check (ตรวจ lint)
+        working-directory: backend
+        run: ruff check .
+
+  # ---------- งานที่ 2: รันเทสต์กับ PostgreSQL ----------
+  test:
+    name: Test (Django 38 เคส + PostgreSQL)
+    runs-on: ubuntu-latest
+
+    # ยกฐานข้อมูล PostgreSQL ขึ้นเป็น service container ให้เทสต์ต่อใช้งานจริง
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: it_lending_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        # รอจน PostgreSQL พร้อมรับ connection ก่อนค่อยเริ่มรันเทสต์
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+
+    # ค่าแวดล้อมที่ settings.py อ่านผ่าน python-decouple (ตรงกับ backend/config/settings.py)
+    env:
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: it_lending_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DJANGO_SECRET_KEY: ci-only-not-a-real-secret
+      DEBUG: "True"
+      # เทสต์ password-reset ส่ง header X-Forwarded-Proto=https จึงต้องเปิดตัวนี้ให้ Django เชื่อ proxy
+      USE_X_FORWARDED_PROTO: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ติดตั้ง Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: ติดตั้ง dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # กันลืม makemigrations: ถ้าโมเดลเปลี่ยนแต่ยังไม่สร้าง migration จะ fail ตรงนี้
+      - name: ตรวจว่า migration ตรงกับโมเดล
+        working-directory: backend
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: รันชุดทดสอบ (manage.py test)
+        working-directory: backend
+        run: python manage.py test --verbosity 2

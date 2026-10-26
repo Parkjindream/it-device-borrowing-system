@@ -13,9 +13,14 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from rental.models import (
-    Booking, EquipmentCategory, Equipment, EquipmentUnit, NotificationLog, PenaltySettings, User,
+    Booking,
+    Equipment,
+    EquipmentCategory,
+    EquipmentUnit,
+    NotificationLog,
+    PenaltySettings,
+    User,
 )
-
 
 DEMO_PASSWORD = "Passw0rd!2026"  # เปลี่ยนก่อนใช้งานจริงเสมอ
 
