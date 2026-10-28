@@ -80,15 +80,22 @@ def _send_background(user, trigger, subject, message, booking=None):
         _deliver(*args)
         return
 
+    sync = getattr(settings, "EMAIL_SYNC", False)
+
     def run():
         try:
             _deliver(*args)
         except Exception:  # กัน thread ตายเงียบ ๆ
             _logger.exception("ส่งอีเมลเบื้องหลังไม่สำเร็จ: %s", args[1])
         finally:
-            connection.close()
+            if not sync:  # ถ้ารันใน request เดียวกัน ห้ามปิด connection ของ request
+                connection.close()
 
-    transaction.on_commit(lambda: threading.Thread(target=run, daemon=True).start())
+    if sync:
+        # serverless (Vercel): ส่งให้เสร็จก่อนตอบ request — ยังรอ commit ก่อน เพื่อให้ log อ้างถึงการจองที่บันทึกแล้ว
+        transaction.on_commit(run)
+    else:
+        transaction.on_commit(lambda: threading.Thread(target=run, daemon=True).start())
 
 
 def notify_booking_confirmed(booking):
@@ -290,7 +297,8 @@ def notify_accounts_created_background(users, base_url):
             connection.close()
 
     # ตอนรันเทสต์ Django จะสลับ EMAIL_BACKEND เป็น locmem — ส่งแบบปกติ (ไม่ใช้ thread) เพื่อให้ใช้ transaction เดียวกับเทสต์
-    if settings.EMAIL_BACKEND == "django.core.mail.backends.locmem.EmailBackend":
+    if settings.EMAIL_BACKEND == "django.core.mail.backends.locmem.EmailBackend" or getattr(settings, "EMAIL_SYNC", False):
+        # (serverless: ห้ามใช้ thread — นำเข้ารายชื่อเยอะ ๆ ให้แบ่งเป็นชุดเล็ก เพราะต้องส่งให้เสร็จภายในเวลาของ function)
         for u in users:
             try:
                 notify_account_created(u, base_url)

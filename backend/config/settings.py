@@ -16,14 +16,20 @@ _env_file = BASE_DIR.parent / ".env"
 config = Config(RepositoryEnv(_env_file) if _env_file.exists() else RepositoryEmpty())
 
 # --- ความปลอดภัยพื้นฐาน ---
+# Vercel ตั้งตัวแปร VERCEL=1 ให้เองทุก deployment — ใช้แยกโหมด serverless ออกจากโหมด Docker/เครื่องนักพัฒนา
+ON_VERCEL = config("VERCEL", default=False, cast=bool)
+
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="dev-only-secret-change-me")
-DEBUG = config("DEBUG", default=True, cast=bool)
+# บน Vercel ค่าเริ่มต้นเป็น False (ปลอดภัยไว้ก่อน ถ้าลืมตั้ง DEBUG จะไม่เปิดโหมดนักพัฒนาบนเว็บจริง)
+DEBUG = config("DEBUG", default=not ON_VERCEL, cast=bool)
 # กันเผลอเปิดใช้งานจริงด้วยคีย์ตัวอย่าง: ใครรู้คีย์นี้ปลอมลิงก์ตั้งรหัสผ่านของบัญชีไหนก็ได้ (รวมเจ้าหน้าที่)
 if not DEBUG and SECRET_KEY == "dev-only-secret-change-me":
     from django.core.exceptions import ImproperlyConfigured
 
     raise ImproperlyConfigured("ตั้ง DJANGO_SECRET_KEY ในไฟล์ .env เป็นค่าสุ่มของตัวเองก่อนใช้งานจริง (ห้ามใช้ค่าตัวอย่าง)")
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
+if ON_VERCEL and ".vercel.app" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, ".vercel.app"]   # โดเมนเริ่มต้นของ Vercel (โดเมนจริงของคุณใส่ใน ALLOWED_HOSTS)
 
 # ต้องระบุ origin ของเว็บที่เข้าหน้า /admin/ ผ่าน https หรือหลัง reverse proxy
 # เช่น https://borrow.college.ac.th  (คั่นด้วย , ได้หลายค่า)
@@ -38,11 +44,12 @@ SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
 # ใช้เมื่อรันหลัง nginx/reverse proxy ที่ทำ https ให้ (Docker ตั้งเป็น True ให้อัตโนมัติผ่าน .env)
-if config("USE_X_FORWARDED_PROTO", default=False, cast=bool):
+# บน Vercel เปิดให้อัตโนมัติ (ไม่งั้น Django คิดว่าเป็น http -> ลิงก์ในอีเมลเป็น http:// และ CSRF ของ admin พัง)
+if config("USE_X_FORWARDED_PROTO", default=ON_VERCEL, cast=bool):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# คุกกี้ปลอดภัย (เปิดเมื่อใช้ https จริงเท่านั้น)
-_secure_cookies = config("SECURE_COOKIES", default=False, cast=bool)
+# คุกกี้ปลอดภัย (เปิดเมื่อใช้ https จริงเท่านั้น) — บน Vercel เป็น https เสมอ
+_secure_cookies = config("SECURE_COOKIES", default=ON_VERCEL, cast=bool)
 SESSION_COOKIE_SECURE = _secure_cookies
 CSRF_COOKIE_SECURE = _secure_cookies
 
@@ -103,6 +110,12 @@ DATABASES = {
         # ใน container compose ส่ง DB_HOST=db/DB_PORT=5432 มาเอง — runserver ต่อพอร์ตที่ infra เปิดไว้บนเครื่อง
         "HOST": config("DB_HOST", default="localhost"),
         "PORT": config("DB_PORT", default=config("DB_EXPOSE_PORT", default="5433")),
+        # serverless: ไม่ถือ connection ค้างข้าม request (Supabase pooler จัดการให้เอง)
+        "CONN_MAX_AGE": config("DB_CONN_MAX_AGE", default=0, cast=int),
+        # Supabase บังคับ/แนะนำ SSL — Docker ภายในเครือข่ายเดียวกันไม่ต้อง
+        "OPTIONS": {"sslmode": config("DB_SSLMODE", default="require" if ON_VERCEL else "prefer")},
+        # ถ้าต่อผ่าน Supabase pooler แบบ transaction (พอร์ต 6543) ต้องปิด server-side cursor
+        "DISABLE_SERVER_SIDE_CURSORS": config("DB_POOLER", default=ON_VERCEL, cast=bool),
     }
 }
 
@@ -128,6 +141,9 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"   # collectstatic เก็บที่นี่ แล้ว WhiteNoise เสิร์ฟ (บีบอัด gzip ให้ด้วย)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"          # รูปอุปกรณ์ที่เจ้าหน้าที่อัปโหลด (ใช้เมื่อไม่ได้ตั้ง MINIO_ENDPOINT)
+# URL สาธารณะของ bucket รูป (ถ้าตั้ง ลิงก์รูปจะชี้ตรงไปที่ storage ไม่ผ่าน Django) เช่น Supabase:
+# https://<project-ref>.supabase.co/storage/v1/object/public/<bucket>   (ตรวจด้วยการเปิดรูปจริงในเบราว์เซอร์)
+MEDIA_PUBLIC_BASE_URL = config("MEDIA_PUBLIC_BASE_URL", default="").rstrip("/")
 
 # --- ที่เก็บไฟล์อัปโหลดบน MinIO (S3) ---
 # docker compose ส่ง MINIO_ENDPOINT=http://minio:9000 ให้ container เอง
@@ -148,13 +164,20 @@ if MINIO_ENDPOINT:
     AWS_SECRET_ACCESS_KEY = config("MINIO_SECRET_KEY", default=config("MINIO_ROOT_PASSWORD", default=""))
     # Django ดึงไฟล์จาก bucket นี้มาเสิร์ฟที่ /media/ (config/urls.py: serve_media_from_storage)
     AWS_STORAGE_BUCKET_NAME = config("MINIO_BUCKET", default="media")
-    AWS_S3_REGION_NAME = "us-east-1"
+    # MinIO ใช้ us-east-1 ได้ แต่ Supabase Storage (S3) ต้องใส่ region ของโปรเจกต์ (เช่น ap-southeast-1) ผ่าน MINIO_REGION
+    AWS_S3_REGION_NAME = config("MINIO_REGION", default="us-east-1")
     AWS_S3_ADDRESSING_STYLE = "path"
     AWS_S3_SIGNATURE_VERSION = "s3v4"
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = False
     # ชื่อไฟล์ซ้ำ -> เติมตัวสุ่มต่อท้ายเหมือนเก็บลงดิสก์ (ค่าเริ่มต้นของ S3 คือเขียนทับรูปของคนอื่น)
     AWS_S3_FILE_OVERWRITE = False
+
+elif ON_VERCEL:
+    # ดิสก์ของ Vercel เขียนไม่ได้ (read-only) — ถ้าไม่ตั้งที่เก็บรูปภายนอก การอัปโหลดรูปจะ error
+    import logging as _logging
+
+    _logging.getLogger(__name__).warning("ON_VERCEL แต่ไม่ได้ตั้ง MINIO_ENDPOINT: อัปโหลดรูปจะใช้ไม่ได้")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -176,7 +199,9 @@ REST_FRAMEWORK = {
         "public": "120/min",
     },
     # จำนวน reverse proxy ที่อยู่หน้า Django (0 = ไม่มี) เพื่ออ่าน IP จริงของผู้ใช้
-    "NUM_PROXIES": config("NUM_PROXIES", default=0, cast=int),
+    # บน Vercel มี proxy 1 ชั้น: ถ้าเป็น 0 ทุกคนจะถูกนับเป็น IP เดียวกัน (IP ของ proxy) แล้วโควต้า login 20/นาที
+    # จะถูกแชร์ทั้งระบบ — ตรวจให้แน่ใจว่าค่านี้ถูกต้องกับ header X-Forwarded-For ที่ Vercel ส่งมา (ดูวิธีทดสอบด้านล่าง)
+    "NUM_PROXIES": config("NUM_PROXIES", default=1 if ON_VERCEL else 0, cast=int),
 }
 
 # หน้า dashboard ที่ต้องล็อกอิน เด้งมาที่นี่ (frontend/decorators.py: role_required)
@@ -192,7 +217,9 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=False, cast=bool)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
-EMAIL_TIMEOUT = 20
+EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=10 if ON_VERCEL else 20, cast=int)
+# serverless: function ถูกหยุดหลังตอบ response จึงส่งอีเมลใน background thread ไม่ได้ ต้องส่งให้เสร็จก่อนตอบ
+EMAIL_SYNC = config("EMAIL_SYNC", default=ON_VERCEL, cast=bool)
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="ศูนย์ยืม-คืนอุปกรณ์ไอที <no-reply@it-lending.local>")
 
 # --- URL หน้าเว็บสำหรับฝัง link ในอีเมล (ตั้งรหัสผ่านใหม่) ---
