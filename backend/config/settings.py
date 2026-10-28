@@ -191,12 +191,14 @@ EMAIL_TIMEOUT = 20
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="ศูนย์ยืม-คืนอุปกรณ์ไอที <no-reply@it-lending.local>")
 
 # --- URL หน้าเว็บสำหรับฝัง link ในอีเมล (ตั้งรหัสผ่านใหม่) ---
-# เว้นว่างไว้ = ใช้โดเมนเดียวกับที่ผู้ใช้กดขอลิงก์เข้ามา (เหมาะกับ trycloudflare ที่ URL สุ่มใหม่ทุกครั้ง
-# และ runserver ที่ 127.0.0.1:8000) — ตั้งค่าเมื่อมีโดเมนจริงที่แน่นอนแล้ว
+# เว้นว่างไว้ = ใช้โดเมนเดียวกับที่ผู้ใช้กดขอลิงก์เข้ามา — ตั้งค่าเมื่อมีโดเมนจริงที่แน่นอนแล้ว
 FRONTEND_URL = config("FRONTEND_URL", default="").rstrip("/")
 FRONTEND_RESET_PASSWORD_URL = config(
     "FRONTEND_RESET_PASSWORD_URL", default=f"{FRONTEND_URL}/reset-password/" if FRONTEND_URL else ""
 )
+
+# --- งานอัตโนมัติผ่าน HTTP (/api/cron/run-jobs/) — เว้นว่าง = ปิด endpoint (ใช้ container scheduler แทน) ---
+CRON_SECRET = config("CRON_SECRET", default="")
 
 # --- ค่าตั้งต้นของระบบ (ค่าจริงที่เจ้าหน้าที่ปรับได้อยู่ในตาราง PenaltySettings) ---
 DEFAULT_BOOKING_EXPIRE_HOURS = 24

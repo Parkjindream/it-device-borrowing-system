@@ -39,6 +39,8 @@ case "$1" in
         python manage.py ensure_superuser
         python manage.py ensure_user
         python manage.py ensure_media_bucket
+        # preflight: ฐานข้อมูล + ที่เก็บไฟล์ต้องใช้ได้จริง ไม่งั้น container นี้ล้ม backend/scheduler จะไม่เริ่ม
+        python manage.py testflight
         exit 0
         ;;
     # collectstatic จำเป็นเฉพาะ container ที่เสิร์ฟเว็บ (gunicorn) container scheduler ไม่ต้องเสียเวลาทำ

@@ -70,4 +70,7 @@ urlpatterns = [
     path("staff/notifications/", views.StaffNotificationListView.as_view(), name="staff-notification-list"),
     path("staff/notifications/clear/", views.StaffNotificationClearView.as_view(), name="staff-notification-clear"),
     path("staff/dashboard-summary/", views.StaffDashboardSummaryView.as_view(), name="staff-dashboard-summary"),
+
+    # --- งานอัตโนมัติผ่าน HTTP (Vercel Cron) ---
+    path("cron/run-jobs/", views.CronRunJobsView.as_view(), name="cron-run-jobs"),
 ]

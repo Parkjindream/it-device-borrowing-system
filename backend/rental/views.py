@@ -1,3 +1,4 @@
+import hmac
 import logging
 from datetime import timedelta
 
@@ -18,7 +19,12 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .jobs import cleanup_old_booking_history, cleanup_old_notification_logs
+from .jobs import (
+    cancel_expired_bookings,
+    cleanup_old_booking_history,
+    cleanup_old_notification_logs,
+    run_daily_due_date_checks,
+)
 from .models import (
     Booking,
     Equipment,
@@ -864,3 +870,29 @@ class StaffDashboardSummaryView(APIView):
             ).filter(Q(suspended_until__isnull=True) | Q(suspended_until__gt=today)).count(),
         }
         return Response(data)
+
+
+# ---------------------------------------------------------------------------
+# งานอัตโนมัติผ่าน HTTP — ใช้แทน container scheduler บนที่ที่รันโปรเซสค้างไม่ได้ (เช่น Vercel Cron)
+# ---------------------------------------------------------------------------
+class CronRunJobsView(APIView):
+    """
+    GET /api/cron/run-jobs/ — รันงานอัตโนมัติ 1 รอบ (เหมือน run_scheduler --once)
+    ต้องส่ง Authorization: Bearer <CRON_SECRET> (Vercel Cron ส่งให้เองเมื่อตั้ง CRON_SECRET ในโปรเจกต์)
+    ไม่ได้ตั้ง CRON_SECRET = ปิด endpoint นี้ (404) / งานทุกตัวรันซ้ำได้ไม่ส่งอีเมลซ้ำในวันเดียวกัน
+    """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        secret = settings.CRON_SECRET
+        if not secret:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        if not hmac.compare_digest(request.headers.get("Authorization", ""), f"Bearer {secret}"):
+            return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        cancel_expired_bookings()
+        run_daily_due_date_checks()
+        logger.info("cron: รันงานอัตโนมัติครบ 1 รอบ")
+        return Response({"detail": "ok"})
