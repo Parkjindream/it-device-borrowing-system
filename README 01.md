@@ -80,6 +80,10 @@ cp .env.example .env            # แล้วแก้ DB_USER/DB_PASSWORD ใ�
 
 # สร้างฐานข้อมูล PostgreSQL ก่อน (ถ้ายังไม่มี)
 # psql -U postgres -c "CREATE DATABASE it_lending_db;"
+# หรือไม่ต้องลง PostgreSQL/MinIO เอง: ยกเฉพาะ infra จาก docker (รันที่โฟลเดอร์รากโปรเจกต์ ต้องมี .env ที่รากก่อน — หัวข้อ 5)
+#   docker compose -f docker-compose.infra.yml up -d
+#   แล้วตั้ง backend/.env ให้ DB_PORT=5433 + DB_USER/DB_PASSWORD และ MINIO_* ตรงกับ .env ที่ราก (ดู backend/.env.example)
+#   ครั้งแรกรัน python manage.py ensure_media_bucket เพื่อสร้าง bucket
 
 python manage.py makemigrations rental
 python manage.py migrate
@@ -172,18 +176,19 @@ docker compose logs cloudflared | grep -o 'https://[a-z0-9-]*\.trycloudflare\.co
 เปิด URL ที่ได้ในเบราว์เซอร์ (หน้า admin อยู่ที่ `/api/admin/`)
 — ในเครื่องเซิร์ฟเวอร์เองทดสอบได้ที่ `http://localhost/` (พอร์ตตาม `HTTP_PORT` ใน `.env`)
 
-สิ่งที่ `docker compose up` เปิดให้ทั้งหมด:
+สิ่งที่ `docker compose up` เปิดให้ทั้งหมด (`docker-compose.yml` include `docker-compose.infra.yml` ให้เอง
+— ใช้ `docker compose -f docker-compose.infra.yml up -d` ถ้าต้องการแค่ `db` + `minio`):
 
-| service | หน้าที่ |
-|---|---|
-| `db` | PostgreSQL 16 (ข้อมูลอยู่ใน volume `pgdata`) ต่อจากเครื่องเซิร์ฟเวอร์ได้ที่ `localhost:5433` |
-| `minio` | เก็บไฟล์อัปโหลด (รูปอุปกรณ์/รูปโปรไฟล์) ข้อมูลอยู่ที่โฟลเดอร์ `.docker-mount/minio` หน้าเว็บจัดการไฟล์ `http://localhost:9001` |
-| `migrate` | รัน migrate + สร้างแอดมิน + สร้าง bucket ใน MinIO ครั้งเดียวแล้วจบ (backend/scheduler รอตัวนี้ก่อน) |
-| `backend` | Django + gunicorn — ทางเข้าเดียวของเว็บ: หน้าเว็บ, API, static (WhiteNoise), `/media/` (ดึงจาก MinIO) |
-| `scheduler` | งานอัตโนมัติ (no-show, แจ้งเตือน, ปลดพักสิทธิ์) |
-| `cloudflared` | Cloudflare Quick Tunnel ให้คนภายนอกเข้าผ่าน https |
-| `db-backup` | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.yml` เพื่อเปิด: `pg_dump` ทุกวันตี 2 ลง `./backups` เก็บ 14 วัน |
-| `pgadmin` | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.yml` เพื่อเปิด แล้วเข้าที่ `http://localhost:5050` |
+| service | ไฟล์ | หน้าที่ |
+|---|---|---|
+| `db` | infra | PostgreSQL 16 (ข้อมูลอยู่ใน volume `pgdata`) ต่อจากเครื่องเซิร์ฟเวอร์ได้ที่ `localhost:5433` |
+| `minio` | infra | เก็บไฟล์อัปโหลด (รูปอุปกรณ์/รูปโปรไฟล์) ข้อมูลอยู่ที่โฟลเดอร์ `.docker-mount/minio` หน้าเว็บจัดการไฟล์ `http://localhost:9001` |
+| `migrate` | หลัก | รัน migrate + สร้างแอดมิน + สร้าง bucket ใน MinIO ครั้งเดียวแล้วจบ (backend/scheduler รอตัวนี้ก่อน) |
+| `backend` | หลัก | Django + gunicorn — ทางเข้าเดียวของเว็บ: หน้าเว็บ, API, static (WhiteNoise), `/media/` (ดึงจาก MinIO) |
+| `scheduler` | หลัก | งานอัตโนมัติ (no-show, แจ้งเตือน, ปลดพักสิทธิ์) |
+| `cloudflared` | หลัก | Cloudflare Quick Tunnel ให้คนภายนอกเข้าผ่าน https |
+| `db-backup` | infra | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.infra.yml` เพื่อเปิด: `pg_dump` ทุกวันตี 2 ลง `./backups` เก็บ 14 วัน |
+| `pgadmin` | infra | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.infra.yml` เพื่อเปิด แล้วเข้าที่ `http://localhost:5050` |
 
 `db`, `minio`, `backend` ผูกพอร์ตไว้แค่ `127.0.0.1` — จากเครื่องอื่นให้ใช้ `ssh -L 5433:localhost:5433 <เซิร์ฟเวอร์>`
 
