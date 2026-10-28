@@ -297,7 +297,7 @@ def notify_accounts_created_background(users, base_url):
             connection.close()
 
     # ตอนรันเทสต์ Django จะสลับ EMAIL_BACKEND เป็น locmem — ส่งแบบปกติ (ไม่ใช้ thread) เพื่อให้ใช้ transaction เดียวกับเทสต์
-        use_inline = (
+    use_inline = (
         settings.EMAIL_BACKEND == "django.core.mail.backends.locmem.EmailBackend"
         or getattr(settings, "EMAIL_SYNC", False)
     )
