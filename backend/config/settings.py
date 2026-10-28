@@ -6,9 +6,14 @@ Django settings สำหรับระบบยืม-คืนอุปกร
 """
 from pathlib import Path
 
-from decouple import Csv, config
+from decouple import Config, Csv, RepositoryEmpty, RepositoryEnv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# อ่านค่าจากตัวแปรแวดล้อมก่อน แล้วค่อย backend/.env เท่านั้น
+# (ค่าเริ่มต้นของ decouple จะไล่หา .env ขึ้นไปถึงรากโปรเจกต์ แล้วเผลอหยิบ .env ของ docker ที่ DEBUG=False มาใช้ตอน runserver)
+_env_file = BASE_DIR / ".env"
+config = Config(RepositoryEnv(_env_file) if _env_file.exists() else RepositoryEmpty())
 
 # --- ความปลอดภัยพื้นฐาน ---
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="dev-only-secret-change-me")
