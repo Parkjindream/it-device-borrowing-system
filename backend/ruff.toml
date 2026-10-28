@@ -8,19 +8,21 @@
 #   ruff check .            # ตรวจ (ไม่แก้)
 #   ruff check . --fix      # แก้อัตโนมัติเท่าที่ปลอดภัย (เรียง import, ลบ import ที่ไม่ใช้)
 #   ruff format .           # จัดรูปแบบโค้ด
+#
+# อยู่ใน ruff.toml (ไม่ใช้ pyproject.toml) เพราะ Vercel เจอ pyproject.toml จะติดตั้ง dependencies จากไฟล์นั้น
+# แทน requirements.txt แล้ว build พังเพราะไม่มี Django
 
-[tool.ruff]
 # ความยาวบรรทัดสูงสุด — ตั้ง 120 ให้พอดีกับโค้ดที่มีคอมเมนต์อธิบายยาว ๆ (ภาษาไทย)
 line-length = 120
 target-version = "py312"
 # ไม่ต้องตรวจไฟล์ที่ Django สร้างให้อัตโนมัติ
 extend-exclude = ["migrations", "staticfiles", "media"]
 
-[tool.ruff.lint]
+[lint]
 # เลือกชุดกฎแบบ "พอดี" เน้นสิ่งที่สะท้อนคุณภาพจริง ไม่รื้อสไตล์ทั้งโปรเจกต์:
 #   E, W = PEP 8 (pycodestyle)   F = ตรรกะผิด/ตัวไม่ได้ใช้ (pyflakes)
 #   I = เรียงลำดับ import ให้เป็นระเบียบ (isort)   UP = ไวยากรณ์ Python รุ่นใหม่ (pyupgrade)
 select = ["E", "W", "F", "I", "UP"]
 
-[tool.ruff.lint.isort]
-known-first-party = ["config", "rental"]
+[lint.isort]
+known-first-party = ["config", "frontend", "rental"]
