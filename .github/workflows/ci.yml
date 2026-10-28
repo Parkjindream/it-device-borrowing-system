@@ -6,7 +6,7 @@
 #
 # มี 2 งานหลัก:
 #   lint  — ตรวจมาตรฐาน PEP 8 + จับ bug เบื้องต้นด้วย ruff
-#   test  — รันชุดทดสอบอัตโนมัติ 38 เคส กับฐานข้อมูล PostgreSQL จริง
+#   test  — รันชุดทดสอบอัตโนมัติ (API + หน้าเว็บ) กับฐานข้อมูล PostgreSQL จริง
 
 name: CI
 
@@ -44,7 +44,7 @@ jobs:
 
   # ---------- งานที่ 2: รันเทสต์กับ PostgreSQL ----------
   test:
-    name: Test (Django 38 เคส + PostgreSQL)
+    name: Test (Django + PostgreSQL)
     runs-on: ubuntu-latest
 
     # ยกฐานข้อมูล PostgreSQL ขึ้นเป็น service container ให้เทสต์ต่อใช้งานจริง
