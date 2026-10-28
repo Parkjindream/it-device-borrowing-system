@@ -40,4 +40,4 @@
 | SR-8 | seed บัญชีจาก env ไม่ทับของเดิม/ไม่สร้างถ้าไม่มี env | `test_ensure_superuser_creates_once_and_never_overwrites`, `test_ensure_superuser_skips_without_env`, `test_ensure_user_creates_regular_student_once` |
 | SR-10 | สถานะเปลี่ยนแบบ atomic + owner check | `test_qr_lookup_does_not_change_status`, `test_student_cannot_cancel_others_booking`, `test_unit_status_guard` |
 
-> รวมเทสต์ **38 เคส ผ่านทั้งหมด** — ทุกแถวข้างบนมีหลักฐานการทดสอบ ครอบคลุม functional + security
+> รวมเทสต์ **49 เคส ผ่านทั้งหมด** — ทุกแถวข้างบนมีหลักฐานการทดสอบ ครอบคลุม functional + security

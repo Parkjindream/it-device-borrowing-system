@@ -5,18 +5,18 @@
 | หลักการ (OWASP Top 10 / CWE) | สิ่งที่ทำในโค้ด | ไฟล์:บรรทัด |
 |------------------------------|-----------------|-------------|
 | **A03 Injection / CWE-89 (SQLi)** | ใช้ Django ORM ล้วน ทุก query เป็น parameterized ไม่มี raw SQL/ string concatenation; ล็อกแถวด้วย `select_for_update(skip_locked=True)` | `services.py:93-99` (ทั้งไฟล์ไม่มี `.raw()`) |
-| **A07 Auth Failures / CWE-307 (brute-force)** | จำกัดความถี่ด้วย `ScopedRateThrottle`: login 20/min, reset request/confirm 10/hr, public 120/min | `settings.py:154-161`, `views.py` (LoginView/PasswordReset*) |
-| **A07 / CWE-256,916 (เก็บรหัสผ่าน)** | แฮชด้วย PBKDF2-SHA256 ของ Django (`set_password`/`check_password`); บัญชีที่ยังไม่ตั้งรหัสใช้ `set_unusable_password()` | `views.py:139,142,204`; `serializers.py` |
-| **CWE-521 (นโยบายรหัสผ่าน)** | เปิด password validators 4 ตัว (ความยาว/ซ้ำข้อมูลผู้ใช้/รหัสนิยม/ตัวเลขล้วน) + `min_length=8` | `settings.py:100-105` |
-| **A01 Broken Access Control / CWE-862** | default `IsAuthenticated` + permission class แยกบทบาท | `settings.py:151`, `permissions.py` |
+| **A07 Auth Failures / CWE-307 (brute-force)** | จำกัดความถี่ด้วย `ScopedRateThrottle`: login 20/min, reset request/confirm 10/hr, public 120/min | `settings.py:159-166`, `views.py` (LoginView/PasswordReset*) |
+| **A07 / CWE-256,916 (เก็บรหัสผ่าน)** | แฮชด้วย PBKDF2-SHA256 ของ Django (`set_password`/`check_password`); บัญชีที่ยังไม่ตั้งรหัสใช้ `set_unusable_password()` | `views.py:144,147,211`; `serializers.py` |
+| **CWE-521 (นโยบายรหัสผ่าน)** | เปิด password validators 4 ตัว (ความยาว/ซ้ำข้อมูลผู้ใช้/รหัสนิยม/ตัวเลขล้วน) + `min_length=8` | `settings.py:105-110` |
+| **A01 Broken Access Control / CWE-862** | default `IsAuthenticated` + permission class แยกบทบาท | `settings.py:156`, `permissions.py` |
 | **A01 / CWE-639 (IDOR)** | queryset ของนักศึกษา filter เฉพาะของตัวเอง; ยกเลิก/ลบ booking ของคนอื่นไม่ได้ | `views.py` (My* views), test `test_student_cannot_cancel_others_booking` |
 | **CWE-915 (Mass Assignment)** | serializer whitelist ฟิลด์; `email`/`role` ควบคุมฝั่งเซิร์ฟเวอร์; หลาย serializer ตั้ง `read_only_fields = fields` | `serializers.py` (ProfileUpdateSerializer), `views.py` (StaffStudentDetailView) |
-| **A04 / CWE-434 (อัปโหลดไฟล์)** | จำกัดขนาดรูป ≤ 5MB + ตรวจชนิดด้วย Pillow/`ImageField`; nginx `client_max_body_size 10M` | `serializers.py` `validate_image`/`validate_profile_image`; `frontend/nginx.conf` |
-| **A01 Enumeration / CWE-203** | login ตอบข้อความกลาง; password-reset ตอบเหมือนกันเสมอ ไม่บอกว่าอีเมลมีจริง และไม่ log ลิงก์ | `views.py:175,178-179`; `serializers.py` |
+| **A04 / CWE-434 (อัปโหลดไฟล์)** | จำกัดขนาดรูป ≤ 5MB + ตรวจชนิดด้วย Pillow/`ImageField` | `serializers.py` `validate_image`/`validate_profile_image` |
+| **A01 Enumeration / CWE-203** | login ตอบข้อความกลาง; password-reset ตอบเหมือนกันเสมอ ไม่บอกว่าอีเมลมีจริง และไม่ log ลิงก์ | `views.py:180,183-184`; `serializers.py` |
 | **CWE-798 (hardcoded secret)** | ความลับอ่านจาก `.env` ด้วย `python-decouple`; กันบูต production ด้วยคีย์ตัวอย่าง | `settings.py:13-19`; `.gitignore` (.env ไม่ถูก track) |
-| **A05 Misconfiguration — security headers** | nginx เติม `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`; Django `SecurityMiddleware`+`XFrameOptions` | `frontend/nginx.conf`; `settings.py:55,62` |
-| **ลดพื้นที่โจมตี** | nginx บล็อก `/api/admin/` จากภายนอก (404); `/media/` อนุญาตเฉพาะ GET/HEAD และตัด `Authorization`/`Cookie` | `frontend/nginx.conf` |
-| **CWE-613 (session/token)** | เปลี่ยน/รีเซ็ตรหัสผ่านเพิกถอน token เดิม บังคับ login ใหม่ | `views.py:145-148,206` |
+| **A05 Misconfiguration — security headers** | Django `SecurityMiddleware` (`X-Content-Type-Options`, `Referrer-Policy`) + `XFrameOptionsMiddleware` (`SAMEORIGIN`) | `settings.py:59,68` (`SECURE_REFERRER_POLICY`, `X_FRAME_OPTIONS`) |
+| **ลดพื้นที่โจมตี** | `/api/admin/` ไม่ถูกเปิด (404) เมื่อ `ENABLE_DJANGO_ADMIN=False`; `/media/` อนุญาตเฉพาะ GET/HEAD ไม่ส่งสิทธิ์ใดต่อไป MinIO; dashboard เช็คล็อกอิน/role ฝั่งเซิร์ฟเวอร์ | `config/urls.py`; `frontend/decorators.py` |
+| **CWE-613 (session/token)** | เปลี่ยน/รีเซ็ตรหัสผ่านเพิกถอน token เดิม บังคับ login ใหม่ | `views.py:150-153,213` |
 | **Repudiation / audit** | บันทึกการส่งอีเมลทุกครั้งใน `NotificationLog` (สำเร็จ/ล้มเหลว); `on_delete=PROTECT` รักษาประวัติการยืม | `models.py:332-356,259,262` |
 | **Resilience (เมลล่ม)** | ชั้นอีเมลกลืน exception ไม่ให้ล้ม request + บันทึกเหตุผล | `notifications.py` |
 

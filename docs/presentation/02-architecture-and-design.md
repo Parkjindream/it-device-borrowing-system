@@ -9,11 +9,9 @@
 ```mermaid
 flowchart LR
     U([ผู้ใช้/เบราว์เซอร์]) -->|HTTPS| CF[Cloudflare Tunnel\ncloudflared]
-    CF --> N[frontend\nnginx + HTML/JS/Tailwind]
-    N -->|/api/*| B[backend\nDjango + DRF\ngunicorn]
-    N -->|/media/*| M[(MinIO / S3\nไฟล์อัปโหลด)]
+    CF --> B[backend\nDjango + DRF + templates\ngunicorn + WhiteNoise]
     B --> DB[(PostgreSQL)]
-    B --> M
+    B -->|S3 API: อัปโหลด/เสิร์ฟ /media/| M[(MinIO / S3\nไฟล์อัปโหลด)]
     SCH[scheduler\nrun_scheduler] --> DB
     SCH -->|SMTP| MAIL([อีเมลภายนอก])
     B -->|SMTP| MAIL
@@ -21,7 +19,7 @@ flowchart LR
 ```
 
 จุดออกแบบที่สำคัญ:
-- **nginx เป็นด่านหน้า** จัดการ static, ส่งต่อ `/api/*` ไป backend, บล็อก `/api/admin/` จากภายนอก, เติม security headers (`frontend/nginx.conf`)
+- **Django เป็นทางเข้าเดียว** — หน้าเว็บ (`/`, Django templates ใน `backend/frontend/`), API (`/api/`), static (WhiteNoise), `/media/` (ดึงจาก MinIO) อยู่ origin เดียวกัน ไม่มี CORS; หน้า dashboard เช็คล็อกอิน/role ฝั่งเซิร์ฟเวอร์ (`frontend/decorators.py`); `/api/admin/` ปิดเมื่อ `ENABLE_DJANGO_ADMIN=False`
 - **scheduler แยก container** จาก backend — งานเบื้องหลังไม่ไปแย่ง worker ที่ตอบหน้าเว็บ (`docker-compose.yml:138`)
 - **migrate เป็น job รันครั้งเดียว** — `backend`/`scheduler` รอให้เสร็จก่อน (`condition: service_completed_successfully`) กัน migrate ชนกัน 2 ตัวตอน DB ยังว่าง (`docker-compose.yml:122-124`)
 

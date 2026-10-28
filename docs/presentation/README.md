@@ -6,7 +6,7 @@
 
 ## ภาพรวมระบบ (1 ย่อหน้า)
 
-ระบบให้นักศึกษา "จอง → รับ → คืน" อุปกรณ์ไอที (โน้ตบุ๊ก/กล้อง ฯลฯ) และให้เจ้าหน้าที่จัดการคลัง/ยืนยันการรับ-คืน/คุมบทลงโทษ สถาปัตยกรรม: **Django 5 + Django REST Framework** (backend) · **HTML/JS + Tailwind** เสิร์ฟด้วย **nginx** (frontend) · **PostgreSQL** (ฐานข้อมูล) · **MinIO/S3** (ไฟล์อัปโหลด) · deploy ด้วย **Docker Compose** เปิดสู่อินเทอร์เน็ตผ่าน **Cloudflare Tunnel**
+ระบบให้นักศึกษา "จอง → รับ → คืน" อุปกรณ์ไอที (โน้ตบุ๊ก/กล้อง ฯลฯ) และให้เจ้าหน้าที่จัดการคลัง/ยืนยันการรับ-คืน/คุมบทลงโทษ สถาปัตยกรรม: **Django 5 + Django REST Framework** (backend) · **Django templates + JS + Tailwind** (หน้าเว็บ เสิร์ฟจาก Django ตัวเดียวกัน ผ่าน WhiteNoise) · **PostgreSQL** (ฐานข้อมูล) · **MinIO/S3** (ไฟล์อัปโหลด) · deploy ด้วย **Docker Compose** เปิดสู่อินเทอร์เน็ตผ่าน **Cloudflare Tunnel**
 
 ## สารบัญ
 
@@ -60,7 +60,13 @@ backend/
     ├── permissions.py         สิทธิ์ตามบทบาท (IsStaffUser / IsStudentUser)
     ├── jobs.py                งานอัตโนมัติ (no-show, แจ้งเตือน, ปลดพักสิทธิ์)
     ├── notifications.py       ส่งอีเมล + log
-    └── tests.py               เทสต์อัตโนมัติ 38 เคส
+    └── tests.py               เทสต์อัตโนมัติ (API) 39 เคส
+└── frontend/                  หน้าเว็บ (Django templates)
+    ├── templates/frontend/    หน้าเว็บทุกหน้า (base.html + partials/)
+    ├── static/frontend/       css / js / รูป / ฟอนต์
+    ├── views.py, urls.py      เส้นทางหน้าเว็บ (/, /login/, /staff/, /student/ ...)
+    ├── decorators.py          role_required — เช็คล็อกอิน/role ก่อนส่งหน้า
+    └── tests.py               เทสต์หน้าเว็บ 10 เคส
 .github/workflows/             CI/CD (ci.yml, cd.yml)
 docker-compose.yml             การติดตั้งจริงทั้งระบบ
 ```
