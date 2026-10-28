@@ -11,10 +11,6 @@ flowchart TB
         SMTP([ผู้ให้บริการอีเมล SMTP])
     end
 
-    subgraph EDGE[" ขอบระบบ (Cloudflare) "]
-        CF[Cloudflare Tunnel\nTLS termination]
-    end
-
     subgraph APP[" โซนแอปพลิเคชัน (เชื่อถือ) "]
         B[Django + DRF + templates\nToken/Session auth / Permission / Throttle\n+ security headers + ปิด /api/admin/]
         SCH[Scheduler jobs]
@@ -25,7 +21,7 @@ flowchart TB
         M[(MinIO/S3\nรูปอุปกรณ์-โปรไฟล์)]
     end
 
-    U -->|HTTPS| CF --> B
+    U -->|HTTP| B
     B -->|ORM parameterized| DB
     B -->|S3 API| M
     SCH --> DB
@@ -33,12 +29,12 @@ flowchart TB
     SCH -. ส่งอีเมล .-> SMTP
 
     classDef boundary stroke-dasharray:5 5
-    class EXT,EDGE,APP,DATA boundary
+    class EXT,APP,DATA boundary
 ```
 
 **Trust boundary ที่ต้องเฝ้า:**
 1. ผู้ใช้ → ระบบ (ทุก input ไม่เชื่อถือ ต้อง validate)
-2. cloudflared → backend (ปิด `/api/admin/` ด้วย `ENABLE_DJANGO_ADMIN`, อ่าน IP จริงผ่าน `NUM_PROXIES=1`, พอร์ตผูก `127.0.0.1` เท่านั้น)
+2. ผู้ใช้ → backend (พอร์ตผูก `127.0.0.1` เท่านั้น, ปิด `/api/admin/` ด้วย `ENABLE_DJANGO_ADMIN`; ถ้าวาง reverse proxy ข้างหน้าต้องตั้ง `NUM_PROXIES` ให้อ่าน IP จริงได้)
 3. backend → DB/MinIO (ใช้ ORM/parameterized เท่านั้น)
 4. ระบบ → SMTP (ข้อมูลออกนอก ต้องระวังไม่หลุด token/ความลับในเนื้ออีเมล)
 

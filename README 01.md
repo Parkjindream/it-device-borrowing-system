@@ -76,15 +76,16 @@ python -m venv venv
 source venv/bin/activate        # Windows PowerShell: .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-cp .env.example .env            # แล้วแก้ DB_USER/DB_PASSWORD ให้ตรงเครื่องคุณ
+cp ../.env.example ../.env      # .env ไฟล์เดียวที่รากโปรเจกต์ (ใช้ร่วมกับ docker) — ตั้ง DEBUG=True, SECURE_COOKIES=False
 
 # สร้างฐานข้อมูล PostgreSQL ก่อน (ถ้ายังไม่มี)
 # psql -U postgres -c "CREATE DATABASE it_lending_db;"
 # หรือไม่ต้องลง PostgreSQL/MinIO เอง: ยกเฉพาะ infra จาก docker (รันที่โฟลเดอร์รากโปรเจกต์ ต้องมี .env ที่รากก่อน — หัวข้อ 5)
 #   docker compose -f docker-compose.infra.yml up -d
-#   แล้วตั้ง backend/.env ให้ DB_PORT=5433 + DB_USER/DB_PASSWORD และ MINIO_* ตรงกับ .env ที่ราก (ดู backend/.env.example)
+#   runserver ต่อ PostgreSQL ที่ localhost:DB_EXPOSE_PORT และ MinIO ที่ localhost:MINIO_API_PORT ให้เองจาก .env เดียวกัน
 #   ครั้งแรกรัน python manage.py ensure_media_bucket เพื่อสร้าง bucket
 
+python manage.py testflight             # เช็คว่าต่อฐานข้อมูล + ที่เก็บไฟล์ (S3/MinIO) ได้จริง
 python manage.py makemigrations rental
 python manage.py migrate
 python manage.py createsuperuser        # จะได้บัญชี role "เจ้าหน้าที่" อัตโนมัติ
@@ -165,16 +166,12 @@ python manage.py send_test_email you@example.com
 ต้องมี Docker และ Docker Compose ติดตั้งในเครื่อง/เซิร์ฟเวอร์ก่อน
 
 ```bash
-cp .env.docker.example .env       # แก้ค่าในไฟล์ .env ให้ครบ (รหัสผ่านทุกตัว, DJANGO_SECRET_KEY, อีเมล SMTP)
+cp .env.example .env              # แก้ค่าในไฟล์ .env ให้ครบ (รหัสผ่านทุกตัว, DJANGO_SECRET_KEY, อีเมล SMTP)
 docker compose up -d --build      # สร้างตาราง + บัญชีแอดมินจาก DJANGO_SUPERUSER_* ให้อัตโนมัติ
 docker compose exec backend python manage.py seed_demo_data   # ถ้าต้องการข้อมูลตัวอย่าง (ข้ามได้ถ้าจะกรอกข้อมูลจริงเอง)
-
-# ดู URL สาธารณะ (Cloudflare Quick Tunnel ไม่ต้องมีบัญชี/token — URL สุ่มใหม่ทุกครั้งที่ cloudflared เริ่มใหม่)
-docker compose logs cloudflared | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com'
 ```
 
-เปิด URL ที่ได้ในเบราว์เซอร์ (หน้า admin อยู่ที่ `/api/admin/`)
-— ในเครื่องเซิร์ฟเวอร์เองทดสอบได้ที่ `http://localhost/` (พอร์ตตาม `HTTP_PORT` ใน `.env`)
+เปิด `http://localhost/` (พอร์ตตาม `HTTP_PORT` ใน `.env`) — หน้า admin อยู่ที่ `/api/admin/` (เมื่อ `ENABLE_DJANGO_ADMIN=True`)
 
 สิ่งที่ `docker compose up` เปิดให้ทั้งหมด (`docker-compose.yml` include `docker-compose.infra.yml` ให้เอง
 — ใช้ `docker compose -f docker-compose.infra.yml up -d` ถ้าต้องการแค่ `db` + `minio`):
@@ -183,10 +180,9 @@ docker compose logs cloudflared | grep -o 'https://[a-z0-9-]*\.trycloudflare\.co
 |---|---|---|
 | `db` | infra | PostgreSQL 16 (ข้อมูลอยู่ใน volume `pgdata`) ต่อจากเครื่องเซิร์ฟเวอร์ได้ที่ `localhost:5433` |
 | `minio` | infra | เก็บไฟล์อัปโหลด (รูปอุปกรณ์/รูปโปรไฟล์) ข้อมูลอยู่ที่โฟลเดอร์ `.docker-mount/minio` หน้าเว็บจัดการไฟล์ `http://localhost:9001` |
-| `migrate` | หลัก | รัน migrate + สร้างแอดมิน + สร้าง bucket ใน MinIO ครั้งเดียวแล้วจบ (backend/scheduler รอตัวนี้ก่อน) |
+| `migrate` | หลัก | รัน migrate + สร้างแอดมิน + สร้าง bucket ใน MinIO + `testflight` ครั้งเดียวแล้วจบ (backend/scheduler รอตัวนี้ก่อน — ถ้า testflight ไม่ผ่าน backend จะไม่เริ่ม) |
 | `backend` | หลัก | Django + gunicorn — ทางเข้าเดียวของเว็บ: หน้าเว็บ, API, static (WhiteNoise), `/media/` (ดึงจาก MinIO) |
 | `scheduler` | หลัก | งานอัตโนมัติ (no-show, แจ้งเตือน, ปลดพักสิทธิ์) |
-| `cloudflared` | หลัก | Cloudflare Quick Tunnel ให้คนภายนอกเข้าผ่าน https |
 | `db-backup` | infra | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.infra.yml` เพื่อเปิด: `pg_dump` ทุกวันตี 2 ลง `./backups` เก็บ 14 วัน |
 | `pgadmin` | infra | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.infra.yml` เพื่อเปิด แล้วเข้าที่ `http://localhost:5050` |
 
@@ -199,14 +195,15 @@ docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB
 docker compose start backend scheduler
 ```
 
-**สถาปัตยกรรมตอน deploy:** `Cloudflare Tunnel (cloudflared)` → `backend container` (Django+gunicorn)
-ซึ่งเป็นทางเข้าเดียว เสิร์ฟหน้าเว็บ (`/`), API (`/api/`), ไฟล์ static (`/static/` ผ่าน WhiteNoise บีบอัด gzip ให้)
+**สถาปัตยกรรมตอน deploy:** `backend container` (Django+gunicorn) เป็นทางเข้าเดียว
+ผูกพอร์ตไว้ที่ `127.0.0.1:HTTP_PORT` — จะเปิดให้เครื่องอื่นเข้า ให้วาง reverse proxy (https) ไว้ข้างหน้า เสิร์ฟหน้าเว็บ (`/`), API (`/api/`), ไฟล์ static (`/static/` ผ่าน WhiteNoise บีบอัด gzip ให้)
 และรูปที่อัปโหลด (`/media/` ดึงจาก MinIO) — ทุกอย่างอยู่ origin เดียวกัน **ไม่มีปัญหา CORS ทั้งตอนพัฒนาและ production**
 หน้า Django admin (`/api/admin/`) ปิดไว้ตอน `DEBUG=False` (เปิดได้ด้วย `ENABLE_DJANGO_ADMIN=True` ใน `.env`)
 ส่วน container `scheduler` รันงานอัตโนมัติ (no-show, แจ้งเตือน, ปลดพักสิทธิ์) แยกจากเว็บ ไม่แย่ง worker กันตอบ request
 
 คำสั่งที่ใช้บ่อยหลัง deploy:
 ```bash
+docker compose exec backend python manage.py testflight   # เช็คการเชื่อมต่อฐานข้อมูล + ที่เก็บไฟล์
 docker compose logs -f backend      # ดู log backend (รวม error ถ้ามี)
 docker compose logs -f scheduler    # ดูว่างานอัตโนมัติรันจริงไหม
 docker compose exec backend python manage.py send_test_email you@example.com
@@ -218,11 +215,23 @@ docker compose up -d --build        # deploy โค้ดเวอร์ชั�
 1. เปลี่ยนรหัสผ่านบัญชีทดสอบทั้งหมด/ไม่รัน `seed_demo_data` กับฐานข้อมูลจริง
 2. ตั้งค่า SMTP จริงใน `.env` (ไม่ใช้ console backend อีกต่อไป)
 3. ตั้ง `DJANGO_SECRET_KEY` ใหม่แบบสุ่ม
-4. เปลี่ยนจาก Quick Tunnel (URL สุ่ม ไม่รับประกัน uptime) เป็น Cloudflare Tunnel แบบมี token ผูกโดเมนจริง
-   (ดูคอมเมนต์ที่ service `cloudflared` ใน `docker-compose.yml`) แล้วตั้ง `ALLOWED_HOSTS`/`CSRF_TRUSTED_ORIGINS`/`FRONTEND_URL` เป็นโดเมนนั้น
+4. วาง reverse proxy ที่ทำ https (ผูกโดเมนจริง) ไว้หน้า `backend` แล้วตั้งใน `.env`: `ALLOWED_HOSTS`/`CSRF_TRUSTED_ORIGINS`/`FRONTEND_URL`
+   เป็นโดเมนนั้น, `SECURE_COOKIES=True`, `USE_X_FORWARDED_PROTO=True`, `NUM_PROXIES=1`
 5. นำเข้ารายชื่อนักศึกษาจริงผ่าน `/api/staff/students/import/` (ดูหัวข้อ 6) หรือทีละคนผ่าน `/api/staff/students/`
 6. แทนที่ `backend/frontend/static/frontend/img/logo.png` ด้วยโลโก้จริงของวิทยาลัย (ชื่อไฟล์เดิม ~512×512px พื้นหลังโปร่งใส)
 7. คัดลอกไฟล์ใน `./backups` ออกไปเก็บนอกเครื่องเซิร์ฟเวอร์สม่ำเสมอ (`db-backup` สำรองให้ทุกวันแต่อยู่เครื่องเดียวกัน ถ้าดิสก์พังก็หายด้วย)
+
+### Deploy บน Vercel (+ Supabase)
+
+- **Settings > Build and Deployment:** Framework = Django, Root Directory = `backend` — ไม่ต้องตั้ง Build Command
+  (Vercel รัน `collectstatic` เองแล้วเสิร์ฟ `/static/` จาก CDN)
+- **Settings > Environment Variables:** `DJANGO_SECRET_KEY`, `DEBUG=False`, `ALLOWED_HOSTS=.vercel.app`,
+  `CSRF_TRUSTED_ORIGINS=https://*.vercel.app`, `SECURE_COOKIES=True`, `USE_X_FORWARDED_PROTO=True`,
+  `DB_*` + `MINIO_ENDPOINT`/`MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` ของ Supabase, `CRON_SECRET`, ค่า SMTP
+- **migrate:** Vercel ไม่รันให้ — รันจากเครื่อง (`.env` ชี้ Supabase): `python manage.py testflight && python manage.py migrate`
+- **งานอัตโนมัติ:** ไม่มี container `scheduler` — `backend/vercel.json` ตั้ง Vercel Cron เรียก `/api/cron/run-jobs/`
+  วันละครั้ง 07:00 เวลาไทย (แผน Hobby รันได้แค่วันละครั้ง คลาดได้ ±59 นาที) จึงยกเลิกการจองที่ไม่มารับวันละรอบ
+  แทนทุก 15 นาที — ต้องการถี่กว่านี้ใช้แผน Pro แล้วแก้ `schedule` เช่น `*/15 * * * *`
 
 ## 6) นำเข้ารายชื่อนักศึกษาจริงทีละหลายคน
 

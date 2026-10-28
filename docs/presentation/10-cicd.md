@@ -50,7 +50,7 @@ steps:
 **2) `smoke-deploy`** — พิสูจน์ว่า **ติดตั้งได้จริง**:
 ```bash
 # 1. สร้าง .env สำหรับทดสอบ (ค่าตัวอย่าง)
-# 2. ยกระบบจริงด้วย compose (db + minio + migrate + backend; ไม่ยก cloudflared)
+# 2. ยกระบบจริงด้วย compose (db + minio + migrate + backend)
 docker compose up -d --build backend
 # 3. วนรอแล้วยิง request เข้าไปจริง — ต้องได้ HTTP 200
 curl http://localhost:8080/api/public/equipment/
@@ -70,7 +70,6 @@ curl http://localhost:8080/api/public/equipment/
 1. หน้า **Actions** แสดง workflow **CI** ติ๊กเขียว (job `lint` + `test`)
 2. หน้า **Actions** แสดง workflow **CD** ติ๊กเขียว (job `build-and-push` + `smoke-deploy`) และบรรทัด `✅ ติดตั้งสำเร็จ: GET /api/public/equipment/ ตอบ 200`
 3. แท็บ **Packages** แสดง image `...-backend`
-4. (ถ้าทำ) ภาพเว็บที่เปิดผ่าน URL `*.trycloudflare.com`
 
 ```
 [ พื้นที่สำหรับวางภาพ screenshot ผลการรัน Actions / Packages / หน้าเว็บจริง ]
@@ -80,9 +79,9 @@ curl http://localhost:8080/api/public/equipment/
 
 **ติดตั้งจริงทั้งระบบ (เครื่องที่มี Docker):**
 ```bash
-cp .env.docker.example .env      # แล้วกรอกค่าลับให้ครบ
+cp .env.example .env      # แล้วกรอกค่าลับให้ครบ
 docker compose up -d --build
-docker compose logs cloudflared | grep trycloudflare   # ได้ URL สาธารณะ
+# เปิด http://localhost/
 ```
 **ให้ pipeline รันบน GitHub:** push โค้ดขึ้น repo แล้วเปิดแท็บ **Actions** — CI รันทันที; เมื่อเข้าสู่ `main` CD จะ build image + smoke deploy ให้อัตโนมัติ (หรือกด **Run workflow** เพื่อสาธิตสด)
 
