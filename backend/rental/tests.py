@@ -5,13 +5,16 @@
 no-show, แจ้งเตือนอีเมล, สิทธิ์การเข้าถึง (นักศึกษา/เจ้าหน้าที่), โปรไฟล์, และกฎ "สแกน QR ≠ ยืนยัน"
 (Django test runner จะสร้างฐานข้อมูลทดสอบแยกให้เอง และใช้ email backend จำลอง ไม่ส่งอีเมลจริง)
 """
+import io
 import os
+import tempfile
 from datetime import datetime, timedelta
 from datetime import time as dtime
 from unittest import mock
 
 from django.core import mail
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
@@ -397,6 +400,34 @@ class ApiAndPermissionTests(BaseTestCase):
             call_command("ensure_superuser", stdout=mock.MagicMock())
         self.assertFalse(User.objects.filter(is_superuser=True).exists())
 
+    def test_cron_endpoint_requires_secret(self):
+        url = "/api/cron/run-jobs/"
+        with override_settings(CRON_SECRET=""):
+            self.assertEqual(APIClient().get(url, HTTP_AUTHORIZATION="Bearer ").status_code, 404)
+        with override_settings(CRON_SECRET="s3cret-value-1234"), \
+                mock.patch("rental.views.cancel_expired_bookings") as cancel, \
+                mock.patch("rental.views.run_daily_due_date_checks") as daily:
+            self.assertEqual(APIClient().get(url).status_code, 401)
+            self.assertEqual(APIClient().get(url, HTTP_AUTHORIZATION="Bearer wrong").status_code, 401)
+            cancel.assert_not_called()
+            resp = APIClient().get(url, HTTP_AUTHORIZATION="Bearer s3cret-value-1234")
+            self.assertEqual(resp.status_code, 200)
+            cancel.assert_called_once()
+            daily.assert_called_once()
+
+    def test_testflight_passes_and_cleans_up_test_file(self):
+        with tempfile.TemporaryDirectory() as media, override_settings(MEDIA_ROOT=media, MINIO_ENDPOINT=""):
+            out = io.StringIO()
+            call_command("testflight", stdout=out)
+            self.assertIn("testflight ผ่านทั้งหมด", out.getvalue())
+            self.assertEqual(os.listdir(os.path.join(media, "testflight")), [])
+
+    def test_testflight_fails_when_storage_unusable(self):
+        with mock.patch("rental.management.commands.testflight.default_storage") as storage:
+            storage.save.side_effect = OSError("เขียนไม่ได้")
+            with self.assertRaises(CommandError):
+                call_command("testflight", "--skip-db", stdout=io.StringIO())
+
     def test_ensure_user_creates_regular_student_once(self):
         env = {"SEED_USER_USERNAME": "harry", "SEED_USER_EMAIL": "harry@example.com",
                "SEED_USER_PASSWORD": "1234", "SEED_USER_ROLE": ""}
@@ -408,12 +439,12 @@ class ApiAndPermissionTests(BaseTestCase):
         resp = APIClient().post("/api/auth/login/", {"email": "harry@example.com", "password": "1234"}, format="json")
         self.assertEqual(resp.status_code, 200)
 
-    @override_settings(FRONTEND_RESET_PASSWORD_URL="", ALLOWED_HOSTS=[".trycloudflare.com"])
+    @override_settings(FRONTEND_RESET_PASSWORD_URL="", ALLOWED_HOSTS=["borrow.example.ac.th"])
     def test_reset_link_uses_request_host_when_url_not_set(self):
         resp = APIClient().post("/api/auth/password-reset/", {"email": self.student.email}, format="json",
-                                HTTP_HOST="abc-def.trycloudflare.com", HTTP_X_FORWARDED_PROTO="https")
+                                HTTP_HOST="borrow.example.ac.th", HTTP_X_FORWARDED_PROTO="https")
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("https://abc-def.trycloudflare.com/reset-password/?uid=", mail.outbox[-1].body)
+        self.assertIn("https://borrow.example.ac.th/reset-password/?uid=", mail.outbox[-1].body)
 
     def test_unit_status_guard(self):
         booking = self.book()

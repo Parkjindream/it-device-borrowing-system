@@ -20,7 +20,7 @@
 | 4 | เพิ่ม **Content-Security-Policy** (เช่น `django-csp`) | ป้องกัน XSS เชิงลึก (defense-in-depth) | เสนอ |
 | 5 | แยก business logic ให้รับ dependency แบบ inject ได้ (repository pattern) | เขียน unit test แบบ mock DB ได้ เทสต์เร็วขึ้น | เสนอ |
 | 6 | เพิ่ม `.github/` (PR template, CODEOWNERS) + branch protection ให้ `main` ต้องผ่าน CI + review | กระบวนการรีวิวมีหลักฐานเชิงเทคนิค | เสนอ |
-| 7 | ย้าย **Quick Tunnel → Named Tunnel (มีโดเมนจริง)** + เปิด HSTS/secure cookie เต็มรูปแบบ | เสถียร/ปลอดภัยสำหรับใช้งานจริง | เตรียมไว้แล้วใน compose (คอมเมนต์) |
+| 7 | วาง **reverse proxy + https + โดเมนจริง** หน้า backend + เปิด HSTS/secure cookie เต็มรูปแบบ | เปิดใช้งานจริงจากภายนอกได้อย่างปลอดภัย | ตั้งค่าผ่าน `.env` ได้แล้ว (`SECURE_COOKIES`, `USE_X_FORWARDED_PROTO`, `NUM_PROXIES`) |
 
 ## ปิดท้าย
 โครงงานนี้แสดงให้เห็นทั้ง **จุดแข็งที่ทำได้ดี** (service layer, concurrency control, test coverage, containerized deploy) และ **ความเข้าใจต่อสิ่งที่ยังปรับปรุงได้** ซึ่งสำคัญพอ ๆ กัน — การรู้ว่าระบบยัง refactor ตรงไหนได้ คือหลักฐานว่าทีมเข้าใจหลักการออกแบบเชิงวัตถุจริง ไม่ใช่แค่ทำให้โปรแกรมรันผ่าน

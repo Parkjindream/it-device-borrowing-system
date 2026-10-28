@@ -6,7 +6,7 @@
 
 ## ภาพรวมระบบ (1 ย่อหน้า)
 
-ระบบให้นักศึกษา "จอง → รับ → คืน" อุปกรณ์ไอที (โน้ตบุ๊ก/กล้อง ฯลฯ) และให้เจ้าหน้าที่จัดการคลัง/ยืนยันการรับ-คืน/คุมบทลงโทษ สถาปัตยกรรม: **Django 5 + Django REST Framework** (backend) · **Django templates + JS + Tailwind** (หน้าเว็บ เสิร์ฟจาก Django ตัวเดียวกัน ผ่าน WhiteNoise) · **PostgreSQL** (ฐานข้อมูล) · **MinIO/S3** (ไฟล์อัปโหลด) · deploy ด้วย **Docker Compose** เปิดสู่อินเทอร์เน็ตผ่าน **Cloudflare Tunnel**
+ระบบให้นักศึกษา "จอง → รับ → คืน" อุปกรณ์ไอที (โน้ตบุ๊ก/กล้อง ฯลฯ) และให้เจ้าหน้าที่จัดการคลัง/ยืนยันการรับ-คืน/คุมบทลงโทษ สถาปัตยกรรม: **Django 5 + Django REST Framework** (backend) · **Django templates + JS + Tailwind** (หน้าเว็บ เสิร์ฟจาก Django ตัวเดียวกัน ผ่าน WhiteNoise) · **PostgreSQL** (ฐานข้อมูล) · **MinIO/S3** (ไฟล์อัปโหลด) · deploy ด้วย **Docker Compose**
 
 ## สารบัญ
 

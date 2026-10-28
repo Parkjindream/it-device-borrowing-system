@@ -78,8 +78,7 @@ jobs:
           EOF
           echo "สร้าง .env สำหรับทดสอบเรียบร้อย"
 
-      # ยกเฉพาะ backend + สายพึ่งพา (db, minio, migrate) — ไม่ต้องยก cloudflared
-      # เพราะ smoke test ยิงเข้า localhost ตรง ๆ ไม่ต้องผ่าน tunnel ออกอินเทอร์เน็ต
+      # ยก backend + สายพึ่งพา (db, minio, migrate) แล้วยิงเข้า localhost
       - name: docker compose up (build + start)
         run: docker compose up -d --build backend
 

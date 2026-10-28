@@ -11,14 +11,12 @@ __pycache__/
 # ==========================================
 # 2. Environment Variables & Secret Keys
 # ==========================================
-# ซ่อนไฟล์ .env ใน backend
-backend/.env
+# ซ่อนไฟล์ .env (มีรหัสผ่าน)
 **/.env
+**/.env.*
 
-# ยกเว้นไฟล์ Example เพื่อให้ Git ติดตามโครงสร้างได้
+# ยกเว้นไฟล์ตัวอย่าง
 !.env.example
-!**/.env.example
-!.env.docker.example
 
 # ==========================================
 # 3. Django Staticfiles & Media Uploads
@@ -29,9 +27,12 @@ backend/media/
 # ข้อมูลของ container ที่ mount ลงโฟลเดอร์ในโปรเจกต์ (ไฟล์อัปโหลดใน MinIO ฯลฯ)
 .docker-mount/
 
-# ไฟล์สำรองฐานข้อมูลจาก docker compose (มีข้อมูลผู้ใช้จริง ห้ามขึ้น git)
-backups/*
-!backups/.gitkeep
+# ไฟล์สำรองฐานข้อมูลจาก service db-backup (มีข้อมูลผู้ใช้จริง ห้ามขึ้น git)
+backups/
+
+# ไฟล์บีบอัด
+*.rar
+*.zip
 
 # ==========================================
 # 4. OS & IDE System Files

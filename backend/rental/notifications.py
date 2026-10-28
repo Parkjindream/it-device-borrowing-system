@@ -228,7 +228,7 @@ _logger = logging.getLogger(__name__)
 def build_frontend_base_url(request):
     """
     ที่อยู่หน้าเว็บที่จะฝังในลิงก์อีเมล: ถ้าตั้ง FRONTEND_URL เป็นที่อยู่จริง (ไม่ใช่ localhost) ใช้ค่านั้น
-    ไม่งั้นใช้ที่อยู่เดียวกับที่เจ้าหน้าที่กำลังเปิดเว็บอยู่ (เหมาะกับ Cloudflare ที่ URL เปลี่ยนเรื่อย ๆ)
+    ไม่งั้นใช้ที่อยู่เดียวกับที่เจ้าหน้าที่กำลังเปิดเว็บอยู่
     """
     configured = (getattr(settings, "FRONTEND_URL", "") or "").rstrip("/")
     if configured and "127.0.0.1" not in configured and "localhost" not in configured:

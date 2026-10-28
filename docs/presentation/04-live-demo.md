@@ -1,9 +1,9 @@
 # 4. การสาธิตการทำงานของโปรแกรม (Live Demo)
 
 ## เตรียมก่อนสาธิต
-1. `cp .env.docker.example .env` แล้วกรอกค่า (ดู [10-cicd.md](10-cicd.md))
+1. `cp .env.example .env` แล้วกรอกค่า (ดู [10-cicd.md](10-cicd.md))
 2. `docker compose up -d --build`
-3. เปิด URL ที่ได้ (`docker compose logs cloudflared | grep trycloudflare`) หรือ `http://localhost/`
+3. เปิด `http://localhost/`
 4. เตรียม 2 หน้าจอ/แท็บ: **นักศึกษา** กับ **เจ้าหน้าที่** (login คนละบัญชี) + ข้อมูลตัวอย่างจาก `python manage.py seed_demo_data`
 
 ## 4.1 Use Case หลัก — ไหลครบวงจร "จอง → รับ → คืน → บทลงโทษ"
