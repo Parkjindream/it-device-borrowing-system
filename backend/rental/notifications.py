@@ -21,6 +21,7 @@ from django.conf import settings
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
 from django.db import connection, transaction
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
@@ -239,7 +240,7 @@ def notify_account_created(user, base_url):
     """ส่งอีเมลแจ้งว่าถูกเพิ่มเข้าระบบ พร้อมลิงก์ตั้งรหัสผ่านครั้งแรก"""
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = PasswordResetTokenGenerator().make_token(user)
-    link = f"{base_url}/reset-password.html?uid={uid}&token={token}"
+    link = f"{base_url}{reverse('frontend:reset-password')}?uid={uid}&token={token}"
     name = f"{user.first_name} {user.last_name}".strip() or user.email
     code_line = f"รหัสนักศึกษา: {user.student_id}\n" if user.student_id else ""
     subject = "คุณถูกเพิ่มเข้าสู่ระบบยืม-คืนอุปกรณ์ไอที — ตั้งรหัสผ่านของคุณ"

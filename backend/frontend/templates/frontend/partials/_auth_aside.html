@@ -1,0 +1,27 @@
+{% load static %}
+  <aside class="auth-aside" aria-hidden="false">
+    <a href="{% url 'frontend:home' %}" class="brand">
+      <img src="{% static 'frontend/img/logo.png' %}" alt="" class="brand-logo" width="48" height="48" style="height:48px;width:48px;border-radius:14px;box-shadow:0 0 0 3px rgba(255,255,255,.35)">
+      <span><span class="brand-name !text-white !text-lg">ศูนย์ยืมคืนอุปกรณ์ไอที</span><span class="brand-sub !text-white/80">ระบบจองยืมออนไลน์</span></span>
+    </a>
+
+    <div class="max-w-md">
+      <h2 class="font-display font-bold text-white text-4xl xl:text-[2.6rem] leading-[1.35] mb-8 [text-wrap:balance]">ยืมอุปกรณ์ไอที ง่ายกว่าที่คิด</h2>
+      <ul class="space-y-5">
+        <li class="auth-point">
+          <span class="icon-tile"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+          <p class="text-white/90 text-[0.95rem] leading-relaxed pt-1.5">จองล่วงหน้าได้ตลอด 24 ชั่วโมง ผ่านมือถือหรือคอมพิวเตอร์</p>
+        </li>
+        <li class="auth-point">
+          <span class="icon-tile"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></span>
+          <p class="text-white/90 text-[0.95rem] leading-relaxed pt-1.5">เห็นจำนวนอุปกรณ์คงเหลือแบบเรียลไทม์ ก่อนตัดสินใจจอง</p>
+        </li>
+        <li class="auth-point">
+          <span class="icon-tile"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/></svg></span>
+          <p class="text-white/90 text-[0.95rem] leading-relaxed pt-1.5">ทุกการรับ-คืนอุปกรณ์ ยืนยันตัวจริงโดยเจ้าหน้าที่เสมอ</p>
+        </li>
+      </ul>
+    </div>
+
+    <p class="text-white/70 text-xs">© 2026 ศูนย์ยืม-คืนอุปกรณ์ไอที</p>
+  </aside>

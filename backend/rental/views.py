@@ -2,9 +2,11 @@ import logging
 from datetime import timedelta
 
 from django.conf import settings
+from django.contrib.auth import login, logout
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -110,14 +112,17 @@ class LoginView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
         token, _ = Token.objects.get_or_create(user=user)
+        # token ใช้เรียก API / session cookie ใช้เปิดหน้า dashboard (Django เช็คสิทธิ์ก่อนส่งหน้า)
+        login(request, user)
         return Response({"token": token.key, "user": UserSerializer(user).data})
 
 
 class LogoutView(APIView):
-    """POST /api/auth/logout/ — ลบ token ปัจจุบัน"""
+    """POST /api/auth/logout/ — ลบ token ปัจจุบัน และ session ของหน้าเว็บ"""
 
     def post(self, request):
         Token.objects.filter(user=request.user).delete()
+        logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -179,7 +184,9 @@ class PasswordResetRequestView(APIView):
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = token_generator.make_token(user)
             # ไม่ได้ตั้ง URL ไว้ -> ใช้โดเมนที่ผู้ใช้เข้ามา (Host ผ่าน ALLOWED_HOSTS แล้ว และคนนอกเข้าได้ทาง tunnel ทางเดียว)
-            reset_page = settings.FRONTEND_RESET_PASSWORD_URL or request.build_absolute_uri("/reset-password.html")
+            reset_page = settings.FRONTEND_RESET_PASSWORD_URL or request.build_absolute_uri(
+                reverse("frontend:reset-password")
+            )
             reset_link = f"{reset_page}?uid={uid}&token={token}"
             # ส่งเบื้องหลัง + บันทึก NotificationLog ให้เองใน notifications (ไม่ log ลิงก์ที่มี token ลง console)
             notify_password_reset(user, reset_link)

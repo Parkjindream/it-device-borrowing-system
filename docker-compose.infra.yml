@@ -1,0 +1,129 @@
+# ================================================================
+# ระบบยืม-คืนอุปกรณ์ไอที — โครงสร้างพื้นฐาน (infra): ฐานข้อมูล + ที่เก็บไฟล์
+# ================================================================
+# docker-compose.yml include ไฟล์นี้อยู่แล้ว — `docker compose up -d` ยกทั้งระบบให้เองตามปกติ
+#
+# รันเฉพาะ infra (ตอนพัฒนา: backend รันด้วย runserver บนเครื่อง แล้วต่อเข้ามาที่ localhost):
+#   docker compose -f docker-compose.infra.yml up -d
+#   แล้วตั้ง backend/.env ให้ชี้มาที่นี่ (ดูตัวอย่างใน backend/.env.example หัวข้อ "ใช้ infra จาก docker"):
+#     DB_HOST=localhost  DB_PORT=5433 (DB_EXPOSE_PORT)  DB_NAME/DB_USER/DB_PASSWORD ตรงกับ .env นี้
+#     MINIO_ENDPOINT=http://localhost:9000  MINIO_ACCESS_KEY/SECRET_KEY = MINIO_ROOT_USER/PASSWORD
+#
+# เครื่องมือฐานข้อมูล (เปิดเฉพาะในเครื่องเซิร์ฟเวอร์ — จากเครื่องอื่นใช้ ssh -L):
+#   pgAdmin      ปิดไว้ก่อน (เปิดได้ที่ service pgadmin ด้านล่าง)
+#   PostgreSQL   localhost:5433          (DB_EXPOSE_PORT) สำหรับ psql/DBeaver
+#   MinIO        http://localhost:9001   (MINIO_CONSOLE_PORT) หน้าเว็บดูไฟล์อัปโหลด login ด้วย MINIO_ROOT_USER/PASSWORD
+#   สำรองข้อมูล   ปิดไว้ก่อน (เปิดได้ที่ service db-backup ด้านล่าง วิธีกู้คืนดูใน db/backup.sh)
+
+services:
+  # PostgreSQL ใน container — ถ้าตั้ง DB_HOST ใน .env ให้ไปใช้ server อื่น ตัวนี้ยังรันอยู่แต่ไม่ถูกใช้
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-it_lending_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?กรุณาตั้งค่า DB_PASSWORD ในไฟล์ .env}
+      TZ: Asia/Bangkok
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # เปิดให้ต่อจากเครื่องเซิร์ฟเวอร์เองเท่านั้น (ใช้ 5433 กันชนกับ PostgreSQL ที่ลงไว้ในเครื่องสำหรับพัฒนา)
+    ports:
+      - "127.0.0.1:${DB_EXPOSE_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-it_lending_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # เก็บไฟล์ที่ผู้ใช้อัปโหลด (รูปอุปกรณ์/รูปโปรไฟล์) — backend เขียนผ่าน S3 API และดึงมาเสิร์ฟที่ /media/
+  # ข้อมูลอยู่ที่โฟลเดอร์ .docker-mount/minio ข้าง docker-compose.yml (สร้างให้เองตอน up, สำรองด้วยการ copy โฟลเดอร์นี้)
+  # image: MinIO เลิกแจก minio/minio บน Docker Hub แล้ว ใช้ build ของ community (pgsty) ที่ยังอัปเดตอยู่แทน
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?กรุณาตั้งค่า MINIO_ROOT_USER ในไฟล์ .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?กรุณาตั้งค่า MINIO_ROOT_PASSWORD ในไฟล์ .env}
+      # Docker Desktop บน Windows/macOS mount โฟลเดอร์ผ่านระบบไฟล์ที่ไม่รองรับ O_DIRECT — ปิดไว้ทุกเครื่องให้เหมือนกัน
+      MINIO_API_ODIRECT: "off"
+      TZ: Asia/Bangkok
+    volumes:
+      # path แบบ relative + "/" ใช้ได้ทั้ง Linux และ Windows (Docker Desktop แปลงเป็น C:\...\.docker-mount\minio ให้เอง)
+      - ./.docker-mount/minio:/data
+    # เปิดให้เข้าจากเครื่องเซิร์ฟเวอร์เองเท่านั้น: 9000 = S3 API, 9001 = หน้าเว็บจัดการไฟล์
+    ports:
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # [ปิดไว้ก่อน — เปิดใช้: ลบ # หน้าบรรทัดของ service นี้]
+  # สำรองฐานข้อมูลทุกวันลง ./backups บนเครื่อง ลบไฟล์ที่เก่าเกิน BACKUP_KEEP_DAYS วันอัตโนมัติ
+  # db-backup:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     PGHOST: ${DB_HOST:-db}
+  #     PGPORT: ${DB_PORT:-5432}
+  #     PGDATABASE: ${DB_NAME:-it_lending_db}
+  #     PGUSER: ${DB_USER:-postgres}
+  #     PGPASSWORD: ${DB_PASSWORD}
+  #     BACKUP_HOUR: ${BACKUP_HOUR:-2}
+  #     BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+  #     TZ: Asia/Bangkok
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./backups:/backups
+  #     - ./db/backup.sh:/backup.sh:ro
+  #   # ตัด \r ก่อนรัน เผื่อไฟล์ถูก checkout บน Windows เป็น CRLF (mount มาจากเครื่องตรง ๆ แก้ใน image ไม่ได้)
+  #   entrypoint: ["sh", "-c", "tr -d '\\r' < /backup.sh > /tmp/backup.sh && exec sh /tmp/backup.sh"]
+
+  # [ปิดไว้ก่อน — เปิดใช้: ลบ # หน้าบรรทัดของ service นี้ + "configs:" และ "pgadmin_data:" ท้ายไฟล์
+  #  แล้วใส่ PGADMIN_EMAIL / PGADMIN_PASSWORD ใน .env]
+  # หน้าเว็บจัดการฐานข้อมูล http://localhost:5050 — มีเซิร์ฟเวอร์ "it-lending" ตั้งไว้ให้แล้ว
+  # ใส่แค่รหัสผ่าน DB_PASSWORD ตอนเปิดครั้งแรก
+  # pgadmin:
+  #   image: dpage/pgadmin4:9.18
+  #   restart: unless-stopped
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?กรุณาตั้งค่า PGADMIN_PASSWORD ในไฟล์ .env}
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   ports:
+  #     - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
+  #   volumes:
+  #     - pgadmin_data:/var/lib/pgadmin
+  #   configs:
+  #     - source: pgadmin_servers
+  #       target: /pgadmin4/servers.json
+
+# รายชื่อเซิร์ฟเวอร์ที่ pgAdmin โหลดให้อัตโนมัติ (ใช้คู่กับ service pgadmin ที่ปิดไว้ด้านบน)
+# configs:
+#   pgadmin_servers:
+#     content: |
+#       {
+#         "Servers": {
+#           "1": {
+#             "Name": "it-lending",
+#             "Group": "Servers",
+#             "Host": "db",
+#             "Port": 5432,
+#             "MaintenanceDB": "${DB_NAME:-it_lending_db}",
+#             "Username": "${DB_USER:-postgres}",
+#             "SSLMode": "prefer"
+#           }
+#         }
+#       }
+
+volumes:
+  pgdata:
+  # pgadmin_data:

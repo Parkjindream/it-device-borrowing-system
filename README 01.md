@@ -1,10 +1,24 @@
 # ระบบยืม-คืนอุปกรณ์ไอที — คู่มือโปรเจกต์ฉบับเต็ม
 
-โปรเจกต์นี้มี 2 ส่วนแยกกัน:
-- **`backend/`** — Django + Django REST Framework + PostgreSQL
-- **`frontend/`** — HTML + Tailwind CSS (CDN) + JavaScript 
+ทั้งระบบเป็นโปรเจกต์ Django เดียวในโฟลเดอร์ **`backend/`** (Django + Django REST Framework + PostgreSQL):
+- **`backend/rental/`** — REST API ทั้งหมด อยู่ใต้ `/api/`
+- **`backend/frontend/`** — หน้าเว็บ (Django templates + Tailwind CSS + JavaScript) อยู่ที่ `/`
+  - `templates/frontend/` หน้าเว็บทุกหน้า (`base.html` + `partials/` ที่ใช้ร่วมกัน)
+  - `static/frontend/` css/js/รูป/ฟอนต์ — Django เสิร์ฟเองด้วย WhiteNoise
+  - หน้าแรก render รายการอุปกรณ์ฝั่งเซิร์ฟเวอร์, หน้า dashboard เช็คล็อกอิน/role ฝั่งเซิร์ฟเวอร์ก่อนส่งหน้า
+    ส่วนที่โต้ตอบใน dashboard (จอง/รับ-คืน/จัดการคลัง/สถิติ) เป็น JavaScript เรียก REST API
 
-ทั้งสองส่วนคุยกันผ่าน REST API เท่านั้น
+ล็อกอินครั้งเดียวได้ทั้ง token (JS ใช้เรียก API) และ session cookie (ใช้เปิดหน้า dashboard)
+
+| URL | หน้า |
+|---|---|
+| `/` | หน้าแรก |
+| `/login/`, `/forgot-password/`, `/reset-password/`, `/set-password/` | เข้าสู่ระบบ / ลืมรหัสผ่าน |
+| `/student/` | หน้าหลักนักศึกษา (ต้องล็อกอินเป็นนักศึกษา) |
+| `/staff/` | แผงควบคุมเจ้าหน้าที่ (ต้องล็อกอินเป็นเจ้าหน้าที่) |
+| `/api/...` | REST API |
+
+ลิงก์แบบเดิม (`login.html`, `reset-password.html?uid=..`, `staff/dashboard.html` ฯลฯ) เด้งไป URL ใหม่ให้อัตโนมัติ
 
 ---
 
@@ -45,7 +59,7 @@
 - เจ้าหน้าที่ตั้งค่าเกณฑ์บทลงโทษเองได้ผ่าน API (`/api/staff/penalty-settings/`) ไม่ต้องแก้โค้ด
 - เจ้าหน้าที่เพิ่ม/นำเข้านักศึกษาได้ผ่าน API (`/api/staff/students/`, `/api/staff/students/import/`)
 - อัปโหลดรูปอุปกรณ์ได้จริงตอนเพิ่ม/แก้ไขรุ่นอุปกรณ์ ถ้ายังไม่มีรูป frontend จะโชว์ภาพประกอบสำเร็จรูป
-  ให้แทน (เดาจากชื่อรุ่น: โน้ตบุ๊ก/iPad/ESP32/ESP8266/Raspberry Pi/Arduino) ที่ `frontend/assets/img/products/`
+  ให้แทน (เดาจากชื่อรุ่น: โน้ตบุ๊ก/iPad/ESP32/ESP8266/Raspberry Pi/Arduino) ที่ `backend/frontend/static/frontend/img/products/`
 - หน้าแรกดึงรายการอุปกรณ์จริงจากระบบมาโชว์ (endpoint สาธารณะ ไม่ต้องล็อกอิน) พร้อมภาพประกอบ
 - ปรับชุดข้อมูลตัวอย่าง (`seed_demo_data`) ให้เหลือ 3 หมวดตามที่ต้องการ: โน้ตบุ๊ก, iPad (Gen 9/10),
   บอร์ดไมโครคอนโทรลเลอร์ (ESP32, ESP8266, Raspberry Pi 4, Arduino Uno)
@@ -54,7 +68,7 @@
 
 ---
 
-## 1) ติดตั้ง Backend (สำหรับพัฒนา/ทดสอบบนเครื่องตัวเอง)
+## 1) ติดตั้งและรัน (สำหรับพัฒนา/ทดสอบบนเครื่องตัวเอง)
 
 ```bash
 cd backend
@@ -66,6 +80,10 @@ cp .env.example .env            # แล้วแก้ DB_USER/DB_PASSWORD ใ�
 
 # สร้างฐานข้อมูล PostgreSQL ก่อน (ถ้ายังไม่มี)
 # psql -U postgres -c "CREATE DATABASE it_lending_db;"
+# หรือไม่ต้องลง PostgreSQL/MinIO เอง: ยกเฉพาะ infra จาก docker (รันที่โฟลเดอร์รากโปรเจกต์ ต้องมี .env ที่รากก่อน — หัวข้อ 5)
+#   docker compose -f docker-compose.infra.yml up -d
+#   แล้วตั้ง backend/.env ให้ DB_PORT=5433 + DB_USER/DB_PASSWORD และ MINIO_* ตรงกับ .env ที่ราก (ดู backend/.env.example)
+#   ครั้งแรกรัน python manage.py ensure_media_bucket เพื่อสร้าง bucket
 
 python manage.py makemigrations rental
 python manage.py migrate
@@ -76,18 +94,16 @@ python manage.py seed_demo_data         # ข้อมูลตัวอย่�
 python manage.py runserver
 ```
 
-## 2) เปิด Frontend
+## 2) เปิดหน้าเว็บ
 
+`runserver` ตัวเดียวเสิร์ฟทั้งหน้าเว็บและ API — เปิดเบราว์เซอร์ไปที่ `http://127.0.0.1:8000/` ได้เลย
+(ไม่ต้องรัน `http.server`/Live Server/`dev_server.py` แยกอีกแล้ว และไม่มีปัญหา CORS)
+
+แก้ CSS: แก้ที่ `backend/frontend/src/styles.css` แล้วคอมไพล์ด้วย Tailwind CLI จากโฟลเดอร์ `backend/frontend/`
 ```bash
-cd frontend
-python -m http.server 5500
+cd backend/frontend
+npx tailwindcss@3 -i src/styles.css -o static/frontend/css/style.css --minify
 ```
-
-เปิดเบราว์เซอร์ไปที่ `http://127.0.0.1:5500/index.html`
-
-**ห้ามเปิดไฟล์ตรง ๆ แบบดับเบิลคลิก** (จะเจอปัญหา CORS) และ **ต้อง `cd frontend` ก่อนรันเว็บเซิร์ฟเวอร์เสมอ**
-(หรือถ้าใช้ VS Code Live Server ให้คลิกขวาไฟล์ที่อยู่ *ในโฟลเดอร์ frontend/* แล้วเลือก Open with Live Server
-ไม่ใช่คลิกขวาจากโฟลเดอร์โปรเจกต์ชั้นนอก — ไม่งั้นจะเจอปัญหา path ที่เคยแก้ไปแล้ว)
 
 ## 3) ข้อมูลตัวอย่างสำหรับทดสอบ (`seed_demo_data`)
 
@@ -160,20 +176,21 @@ docker compose logs cloudflared | grep -o 'https://[a-z0-9-]*\.trycloudflare\.co
 เปิด URL ที่ได้ในเบราว์เซอร์ (หน้า admin อยู่ที่ `/api/admin/`)
 — ในเครื่องเซิร์ฟเวอร์เองทดสอบได้ที่ `http://localhost/` (พอร์ตตาม `HTTP_PORT` ใน `.env`)
 
-สิ่งที่ `docker compose up` เปิดให้ทั้งหมด:
+สิ่งที่ `docker compose up` เปิดให้ทั้งหมด (`docker-compose.yml` include `docker-compose.infra.yml` ให้เอง
+— ใช้ `docker compose -f docker-compose.infra.yml up -d` ถ้าต้องการแค่ `db` + `minio`):
 
-| service | หน้าที่ |
-|---|---|
-| `db` | PostgreSQL 16 (ข้อมูลอยู่ใน volume `pgdata`) ต่อจากเครื่องเซิร์ฟเวอร์ได้ที่ `localhost:5433` |
-| `minio` | เก็บไฟล์อัปโหลด (รูปอุปกรณ์/รูปโปรไฟล์) ข้อมูลอยู่ที่โฟลเดอร์ `.docker-mount/minio` หน้าเว็บจัดการไฟล์ `http://localhost:9001` |
-| `migrate` | รัน migrate + สร้างแอดมิน + สร้าง bucket ใน MinIO ครั้งเดียวแล้วจบ (backend/scheduler รอตัวนี้ก่อน) |
-| `backend` / `scheduler` | Django API / งานอัตโนมัติ |
-| `frontend` | nginx ทางเข้าเดียวของเว็บ |
-| `cloudflared` | Cloudflare Quick Tunnel ให้คนภายนอกเข้าผ่าน https |
-| `db-backup` | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.yml` เพื่อเปิด: `pg_dump` ทุกวันตี 2 ลง `./backups` เก็บ 14 วัน |
-| `pgadmin` | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.yml` เพื่อเปิด แล้วเข้าที่ `http://localhost:5050` |
+| service | ไฟล์ | หน้าที่ |
+|---|---|---|
+| `db` | infra | PostgreSQL 16 (ข้อมูลอยู่ใน volume `pgdata`) ต่อจากเครื่องเซิร์ฟเวอร์ได้ที่ `localhost:5433` |
+| `minio` | infra | เก็บไฟล์อัปโหลด (รูปอุปกรณ์/รูปโปรไฟล์) ข้อมูลอยู่ที่โฟลเดอร์ `.docker-mount/minio` หน้าเว็บจัดการไฟล์ `http://localhost:9001` |
+| `migrate` | หลัก | รัน migrate + สร้างแอดมิน + สร้าง bucket ใน MinIO ครั้งเดียวแล้วจบ (backend/scheduler รอตัวนี้ก่อน) |
+| `backend` | หลัก | Django + gunicorn — ทางเข้าเดียวของเว็บ: หน้าเว็บ, API, static (WhiteNoise), `/media/` (ดึงจาก MinIO) |
+| `scheduler` | หลัก | งานอัตโนมัติ (no-show, แจ้งเตือน, ปลดพักสิทธิ์) |
+| `cloudflared` | หลัก | Cloudflare Quick Tunnel ให้คนภายนอกเข้าผ่าน https |
+| `db-backup` | infra | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.infra.yml` เพื่อเปิด: `pg_dump` ทุกวันตี 2 ลง `./backups` เก็บ 14 วัน |
+| `pgadmin` | infra | *ปิดไว้ก่อน* — ลบ `#` ใน `docker-compose.infra.yml` เพื่อเปิด แล้วเข้าที่ `http://localhost:5050` |
 
-`db`, `minio`, `frontend` ผูกพอร์ตไว้แค่ `127.0.0.1` — จากเครื่องอื่นให้ใช้ `ssh -L 5433:localhost:5433 <เซิร์ฟเวอร์>`
+`db`, `minio`, `backend` ผูกพอร์ตไว้แค่ `127.0.0.1` — จากเครื่องอื่นให้ใช้ `ssh -L 5433:localhost:5433 <เซิร์ฟเวอร์>`
 
 กู้คืนฐานข้อมูลจากไฟล์สำรอง:
 ```bash
@@ -182,12 +199,11 @@ docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB
 docker compose start backend scheduler
 ```
 
-**สถาปัตยกรรมตอน deploy:** `Cloudflare Tunnel (cloudflared)` → `nginx (frontend container)` ซึ่งเป็นทางเข้า
-เดียว เสิร์ฟไฟล์เว็บ + `/static/` เอง, ดึง `/media/` จาก MinIO และ proxy `/api/*` ไปยัง `backend container`
-(Django+gunicorn) โดยตัด `/api` ออก (`/api/auth/login/` → backend `/auth/login/`) ทำให้ frontend
-กับ backend อยู่ origin เดียวกันจากมุมมองเบราว์เซอร์ — **ไม่มีปัญหา CORS เลยตอน production**
-(ต่างจากตอนพัฒนาที่รันคนละพอร์ตจึงต้องพึ่ง `CORS_ALLOWED_ORIGINS`) ส่วน container `scheduler` รันงาน
-อัตโนมัติ (no-show, แจ้งเตือน, ปลดพักสิทธิ์) แยกจากเว็บ ไม่แย่ง worker กันตอบ request
+**สถาปัตยกรรมตอน deploy:** `Cloudflare Tunnel (cloudflared)` → `backend container` (Django+gunicorn)
+ซึ่งเป็นทางเข้าเดียว เสิร์ฟหน้าเว็บ (`/`), API (`/api/`), ไฟล์ static (`/static/` ผ่าน WhiteNoise บีบอัด gzip ให้)
+และรูปที่อัปโหลด (`/media/` ดึงจาก MinIO) — ทุกอย่างอยู่ origin เดียวกัน **ไม่มีปัญหา CORS ทั้งตอนพัฒนาและ production**
+หน้า Django admin (`/api/admin/`) ปิดไว้ตอน `DEBUG=False` (เปิดได้ด้วย `ENABLE_DJANGO_ADMIN=True` ใน `.env`)
+ส่วน container `scheduler` รันงานอัตโนมัติ (no-show, แจ้งเตือน, ปลดพักสิทธิ์) แยกจากเว็บ ไม่แย่ง worker กันตอบ request
 
 คำสั่งที่ใช้บ่อยหลัง deploy:
 ```bash
@@ -205,7 +221,7 @@ docker compose up -d --build        # deploy โค้ดเวอร์ชั�
 4. เปลี่ยนจาก Quick Tunnel (URL สุ่ม ไม่รับประกัน uptime) เป็น Cloudflare Tunnel แบบมี token ผูกโดเมนจริง
    (ดูคอมเมนต์ที่ service `cloudflared` ใน `docker-compose.yml`) แล้วตั้ง `ALLOWED_HOSTS`/`CSRF_TRUSTED_ORIGINS`/`FRONTEND_URL` เป็นโดเมนนั้น
 5. นำเข้ารายชื่อนักศึกษาจริงผ่าน `/api/staff/students/import/` (ดูหัวข้อ 6) หรือทีละคนผ่าน `/api/staff/students/`
-6. แทนที่ `frontend/assets/img/logo.png` ด้วยโลโก้จริงของวิทยาลัย (ชื่อไฟล์เดิม ~512×512px พื้นหลังโปร่งใส)
+6. แทนที่ `backend/frontend/static/frontend/img/logo.png` ด้วยโลโก้จริงของวิทยาลัย (ชื่อไฟล์เดิม ~512×512px พื้นหลังโปร่งใส)
 7. คัดลอกไฟล์ใน `./backups` ออกไปเก็บนอกเครื่องเซิร์ฟเวอร์สม่ำเสมอ (`db-backup` สำรองให้ทุกวันแต่อยู่เครื่องเดียวกัน ถ้าดิสก์พังก็หายด้วย)
 
 ## 6) นำเข้ารายชื่อนักศึกษาจริงทีละหลายคน
@@ -236,9 +252,10 @@ no-show, การแจ้งเตือนอีเมลทุกจุด (
 
 ## 8) Checklist ทดสอบ end-to-end ด้วยมือ (ผ่านหน้าเว็บจริง)
 
-- [ ] หน้าแรก `index.html` โหลดรายการอุปกรณ์จริงพร้อมภาพประกอบขึ้นมา (ไม่ต้องล็อกอิน)
+- [ ] หน้าแรก `/` แสดงรายการอุปกรณ์จริงพร้อมภาพประกอบ (ไม่ต้องล็อกอิน)
+- [ ] เปิด `/staff/` หรือ `/student/` โดยไม่ล็อกอิน → เด้งไปหน้า login; นักศึกษาเปิด `/staff/` → เด้งกลับ `/student/`
 - [ ] Login นักศึกษา → เห็นอุปกรณ์พร้อมภาพ → จองสำเร็จ → เช็คอีเมล "จองสำเร็จ" ใน terminal backend
-- [ ] กด "โปรไฟล์ของฉัน" แก้ชื่อ → บันทึกสำเร็จ → logout แล้ว login ใหม่ → ชื่อยังเป็นชื่อที่แก้ (**ทดสอบว่าบั๊ก logout หายแล้วด้วย** — ต้องไม่เจอ "Cannot GET /login.html")
+- [ ] กด "โปรไฟล์ของฉัน" แก้ชื่อ → บันทึกสำเร็จ → logout แล้ว login ใหม่ → ชื่อยังเป็นชื่อที่แก้ (logout แล้วเปิด `/student/` ต้องเด้งไปหน้า login)
 - [ ] เปลี่ยนรหัสผ่านในหน้าโปรไฟล์ → logout → login ด้วยรหัสใหม่ได้
 - [ ] Login เจ้าหน้าที่ → ค้นรหัสการจอง → ยืนยันรับของ → เช็คอีเมล "รับของสำเร็จ" ขึ้นใน terminal
 - [ ] แก้วันครบกำหนดของ booking ให้เป็นวันที่ผ่านมาแล้วผ่านหน้า Django admin (`/api/admin/`) เพื่อจำลองเกินกำหนด

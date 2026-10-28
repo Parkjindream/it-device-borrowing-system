@@ -1,7 +1,7 @@
 # 5. สรุปผลและข้อเสนอแนะ
 
 ## สรุปผล
-ระบบทำงานครบวงจรตามขอบเขต (โมดูล A–G) ยืนยันด้วยเทสต์อัตโนมัติ 38 เคสที่ผ่านทั้งหมด จุดแข็งเชิงออกแบบคือ **การแยกชั้น service ออกจาก HTTP** และ **การคุม race condition ที่ระดับฐานข้อมูล** ซึ่งเป็นหัวใจความถูกต้องของระบบยืม-คืน
+ระบบทำงานครบวงจรตามขอบเขต (โมดูล A–G) ยืนยันด้วยเทสต์อัตโนมัติ 49 เคสที่ผ่านทั้งหมด จุดแข็งเชิงออกแบบคือ **การแยกชั้น service ออกจาก HTTP** และ **การคุม race condition ที่ระดับฐานข้อมูล** ซึ่งเป็นหัวใจความถูกต้องของระบบยืม-คืน
 
 ## 5.1 ปัญหาและอุปสรรคในการออกแบบเชิงวัตถุ
 
@@ -17,7 +17,7 @@
 | 1 | แยกแอป `rental` เป็นแอปย่อยตามโดเมน (accounts / inventory / booking / notification) | High Cohesion ระดับแพ็กเกจ, แบ่งงานทีมชัด | เสนอ |
 | 2 | เพิ่ม `ruff` (lint) + `ruff format` เข้าCI และ pre-commit hook | บังคับ PEP 8 อัตโนมัติ กัน code ไม่ได้มาตรฐานหลุด | ✅ ทำแล้ว (lint ใน `ci.yml`) |
 | 3 | กำหนด **อายุ token (TTL)** + หมุน token และพิจารณาย้ายไป httpOnly cookie | ลดผลกระทบเมื่อ token รั่วจาก XSS | เสนอ |
-| 4 | เพิ่ม **Content-Security-Policy** ที่ nginx | ป้องกัน XSS เชิงลึก (defense-in-depth) | เสนอ |
+| 4 | เพิ่ม **Content-Security-Policy** (เช่น `django-csp`) | ป้องกัน XSS เชิงลึก (defense-in-depth) | เสนอ |
 | 5 | แยก business logic ให้รับ dependency แบบ inject ได้ (repository pattern) | เขียน unit test แบบ mock DB ได้ เทสต์เร็วขึ้น | เสนอ |
 | 6 | เพิ่ม `.github/` (PR template, CODEOWNERS) + branch protection ให้ `main` ต้องผ่าน CI + review | กระบวนการรีวิวมีหลักฐานเชิงเทคนิค | เสนอ |
 | 7 | ย้าย **Quick Tunnel → Named Tunnel (มีโดเมนจริง)** + เปิด HSTS/secure cookie เต็มรูปแบบ | เสถียร/ปลอดภัยสำหรับใช้งานจริง | เตรียมไว้แล้วใน compose (คอมเมนต์) |

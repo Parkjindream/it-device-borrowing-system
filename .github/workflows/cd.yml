@@ -3,7 +3,7 @@
 # ============================================================
 # ทำงานเมื่อโค้ดเข้าสู่ main (หรือสร้าง tag เวอร์ชัน v*) และสั่งรันเองได้จากหน้า Actions
 # มี 2 งาน:
-#   build-and-push  — build Docker image ของ backend + frontend แล้ว push ขึ้น
+#   build-and-push  — build Docker image (Django: API + หน้าเว็บในตัวเดียว) แล้ว push ขึ้น
 #                     GitHub Container Registry (ghcr.io) → เห็นผลในแท็บ Packages ของ repo
 #   smoke-deploy    — ยกทั้งระบบขึ้นด้วย docker compose จริง แล้วยิง request เข้าไปจริง
 #                     เพื่อ "แสดงผลลัพธ์การติดตั้ง" ว่าระบบ start แล้วตอบ API ได้ (ติดตั้งสำเร็จ)
@@ -27,7 +27,7 @@ jobs:
 
     strategy:
       matrix:
-        component: [backend, frontend]   # build ทีละตัวแบบขนาน
+        component: [backend]   # หน้าเว็บรวมอยู่ใน backend แล้ว (backend/frontend/) เหลือ image เดียว
 
     steps:
       - uses: actions/checkout@v4
@@ -78,26 +78,38 @@ jobs:
           EOF
           echo "สร้าง .env สำหรับทดสอบเรียบร้อย"
 
-      # ยกเฉพาะ frontend + สายพึ่งพา (db, minio, migrate, backend) — ไม่ต้องยก cloudflared
+      # ยกเฉพาะ backend + สายพึ่งพา (db, minio, migrate) — ไม่ต้องยก cloudflared
       # เพราะ smoke test ยิงเข้า localhost ตรง ๆ ไม่ต้องผ่าน tunnel ออกอินเทอร์เน็ต
       - name: docker compose up (build + start)
-        run: docker compose up -d --build frontend
+        run: docker compose up -d --build backend
 
       - name: รอให้ระบบพร้อมและทดสอบ endpoint สาธารณะ
         run: |
-          echo "รอ backend/ frontend พร้อมรับ request ..."
+          echo "รอ backend พร้อมรับ request ..."
           for i in $(seq 1 40); do
             code=$(curl -s -o /tmp/resp.json -w "%{http_code}" http://localhost:8080/api/public/equipment/ || true)
             if [ "$code" = "200" ]; then
               echo "✅ ติดตั้งสำเร็จ: GET /api/public/equipment/ ตอบ 200"
               head -c 400 /tmp/resp.json; echo
-              exit 0
+              break
             fi
             echo "  ครั้งที่ $i: ได้รหัส $code — รอต่อ ..."
             sleep 3
           done
-          echo "❌ ระบบไม่ตอบ 200 ภายในเวลาที่กำหนด"
-          exit 1
+          if [ "$code" != "200" ]; then
+            echo "❌ ระบบไม่ตอบ 200 ภายในเวลาที่กำหนด"
+            exit 1
+          fi
+
+      # หน้าเว็บ (Django template) + ไฟล์ static (WhiteNoise) ต้องมาจาก container เดียวกัน
+      - name: ทดสอบหน้าเว็บและไฟล์ static
+        run: |
+          curl -fsS http://localhost:8080/ | grep -q "<html" && echo "✅ GET / ได้หน้าเว็บ"
+          curl -fsS -o /dev/null http://localhost:8080/static/frontend/css/style.css && echo "✅ GET /static/frontend/css/style.css"
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/staff/)
+          [ "$code" = "302" ] && echo "✅ /staff/ ยังไม่ล็อกอิน -> เด้งไปหน้า login"
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/admin/)
+          [ "$code" = "404" ] && echo "✅ /api/admin/ ปิดอยู่"
 
       # เก็บ log ไว้ดูย้อนหลัง (ใช้เป็นหลักฐาน "ผลลัพธ์การติดตั้ง" แนบในสไลด์ได้)
       - name: เก็บ log ของทุก service เป็น artifact

@@ -6,9 +6,14 @@ Django settings สำหรับระบบยืม-คืนอุปกร
 """
 from pathlib import Path
 
-from decouple import Csv, config
+from decouple import Config, Csv, RepositoryEmpty, RepositoryEnv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# อ่านค่าจากตัวแปรแวดล้อมก่อน แล้วค่อย backend/.env เท่านั้น
+# (ค่าเริ่มต้นของ decouple จะไล่หา .env ขึ้นไปถึงรากโปรเจกต์ แล้วเผลอหยิบ .env ของ docker ที่ DEBUG=False มาใช้ตอน runserver)
+_env_file = BASE_DIR / ".env"
+config = Config(RepositoryEnv(_env_file) if _env_file.exists() else RepositoryEmpty())
 
 # --- ความปลอดภัยพื้นฐาน ---
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="dev-only-secret-change-me")
@@ -24,9 +29,13 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv(
 # เช่น https://borrow.college.ac.th  (คั่นด้วย , ได้หลายค่า)
 CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="", cast=Csv())
 
-# backend ถูกเปิดสู่ภายนอกใต้ /api เท่านั้น (nginx/dev_server.py ตัด /api ออกก่อนส่งมา)
-# บอก Django ไว้ ลิงก์ที่สร้างเอง (หน้า admin, redirect, ลิงก์แบ่งหน้า) จะได้ขึ้นต้นด้วย /api ถูกต้อง
-FORCE_SCRIPT_NAME = config("FORCE_SCRIPT_NAME", default="/api") or None
+# Django admin (/api/admin/) — ปิดไว้ตอนใช้งานจริง ระบบนี้ใช้หน้าเจ้าหน้าที่ของเราเอง
+# เปิดตอน DEBUG ให้อัตโนมัติ ถ้าต้องใช้บนเซิร์ฟเวอร์จริงให้ตั้ง ENABLE_DJANGO_ADMIN=True ใน .env
+ENABLE_DJANGO_ADMIN = config("ENABLE_DJANGO_ADMIN", default=DEBUG, cast=bool)
+
+# header ความปลอดภัยพื้นฐาน (เดิม nginx ใส่ให้) — nosniff เปิดอยู่แล้วโดย SecurityMiddleware
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+X_FRAME_OPTIONS = "SAMEORIGIN"
 
 # ใช้เมื่อรันหลัง nginx/reverse proxy ที่ทำ https ให้ (Docker ตั้งเป็น True ให้อัตโนมัติผ่าน .env)
 if config("USE_X_FORWARDED_PROTO", default=False, cast=bool):
@@ -47,14 +56,15 @@ INSTALLED_APPS = [
     # third-party
     "rest_framework",
     "rest_framework.authtoken",
-    "corsheaders",
     # โปรเจกต์ของเรา
     "rental",
+    "frontend",   # หน้าเว็บ (Django templates + static) — ดู frontend/urls.py
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
+    # เสิร์ฟไฟล์ static (css/js/รูป/ฟอนต์) เองจาก gunicorn ไม่ต้องมี nginx
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -113,9 +123,8 @@ TIME_ZONE = "Asia/Bangkok"
 USE_I18N = True
 USE_TZ = True
 
-# ใช้ path เต็ม (ขึ้นต้นด้วย /) ไม่งั้น Django จะเติม /api ข้างหน้าให้ตาม FORCE_SCRIPT_NAME
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"   # collectstatic เก็บที่นี่ (Docker ให้ nginx เสิร์ฟ)
+STATIC_ROOT = BASE_DIR / "staticfiles"   # collectstatic เก็บที่นี่ แล้ว WhiteNoise เสิร์ฟ (บีบอัด gzip ให้ด้วย)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"          # รูปอุปกรณ์ที่เจ้าหน้าที่อัปโหลด (ใช้เมื่อไม่ได้ตั้ง MINIO_ENDPOINT)
 
@@ -123,15 +132,16 @@ MEDIA_ROOT = BASE_DIR / "media"          # รูปอุปกรณ์ที�
 # docker compose ตั้ง MINIO_ENDPOINT=http://minio:9000 ให้เอง / ตอนพัฒนาบนเครื่องเว้นว่าง = เก็บลง MEDIA_ROOT
 # bucket สร้างให้อัตโนมัติตอน migrate (python manage.py ensure_media_bucket)
 MINIO_ENDPOINT = config("MINIO_ENDPOINT", default="")
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
 if MINIO_ENDPOINT:
-    STORAGES = {
-        "default": {"BACKEND": "config.storage.MediaStorage"},
-        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
-    }
+    STORAGES["default"] = {"BACKEND": "config.storage.MediaStorage"}
     AWS_S3_ENDPOINT_URL = MINIO_ENDPOINT
     AWS_ACCESS_KEY_ID = config("MINIO_ACCESS_KEY")
     AWS_SECRET_ACCESS_KEY = config("MINIO_SECRET_KEY")
-    # nginx proxy /media/ ไปที่ bucket ชื่อเดียวกันตรง ๆ — เปลี่ยนชื่อต้องแก้ nginx.conf ด้วย
+    # Django ดึงไฟล์จาก bucket นี้มาเสิร์ฟที่ /media/ (config/urls.py: serve_media_from_storage)
     AWS_STORAGE_BUCKET_NAME = config("MINIO_BUCKET", default="media")
     AWS_S3_REGION_NAME = "us-east-1"
     AWS_S3_ADDRESSING_STYLE = "path"
@@ -164,13 +174,8 @@ REST_FRAMEWORK = {
     "NUM_PROXIES": config("NUM_PROXIES", default=0, cast=int),
 }
 
-# --- CORS: ให้ frontend ที่รันแยกพอร์ตตอนพัฒนาเรียก API ได้ ---
-# (ตอน deploy ด้วย Docker frontend/backend อยู่ origin เดียวกันผ่าน nginx จึงไม่ต้องพึ่ง CORS)
-CORS_ALLOWED_ORIGINS = config(
-    "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080,http://127.0.0.1:8080",
-    cast=Csv(),
-)
+# หน้า dashboard ที่ต้องล็อกอิน เด้งมาที่นี่ (frontend/decorators.py: role_required)
+LOGIN_URL = "frontend:login"
 
 # --- อีเมล (สำหรับระบบแจ้งเตือน โมดูล E) ---
 # ค่าเริ่มต้นเป็น console = แค่พิมพ์อีเมลลง terminal ไม่ได้ส่งจริง (เหมาะกับตอนทดสอบ)
@@ -185,12 +190,12 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 EMAIL_TIMEOUT = 20
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="ศูนย์ยืม-คืนอุปกรณ์ไอที <no-reply@it-lending.local>")
 
-# --- URL หน้า frontend สำหรับฝัง link ในอีเมล (ตั้งรหัสผ่านใหม่) ---
+# --- URL หน้าเว็บสำหรับฝัง link ในอีเมล (ตั้งรหัสผ่านใหม่) ---
 # เว้นว่างไว้ = ใช้โดเมนเดียวกับที่ผู้ใช้กดขอลิงก์เข้ามา (เหมาะกับ trycloudflare ที่ URL สุ่มใหม่ทุกครั้ง
-# และ dev_server.py ที่ 127.0.0.1:5500) — ตั้งค่าเมื่อมีโดเมนจริงที่แน่นอนแล้ว
+# และ runserver ที่ 127.0.0.1:8000) — ตั้งค่าเมื่อมีโดเมนจริงที่แน่นอนแล้ว
 FRONTEND_URL = config("FRONTEND_URL", default="").rstrip("/")
 FRONTEND_RESET_PASSWORD_URL = config(
-    "FRONTEND_RESET_PASSWORD_URL", default=f"{FRONTEND_URL}/reset-password.html" if FRONTEND_URL else ""
+    "FRONTEND_RESET_PASSWORD_URL", default=f"{FRONTEND_URL}/reset-password/" if FRONTEND_URL else ""
 )
 
 # --- ค่าตั้งต้นของระบบ (ค่าจริงที่เจ้าหน้าที่ปรับได้อยู่ในตาราง PenaltySettings) ---
