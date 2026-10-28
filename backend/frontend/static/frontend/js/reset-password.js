@@ -59,6 +59,6 @@ document.addEventListener("DOMContentLoaded", () => {
     showMessage("ตั้งรหัสผ่านใหม่สำเร็จ กำลังพาไปหน้าเข้าสู่ระบบ...", false);
     form.reset();
     submitBtn.textContent = "สำเร็จแล้ว";
-    setTimeout(() => (location.href = "login.html"), 1800);
+    setTimeout(() => (location.href = APP.urls.login), 1800);
   });
 });

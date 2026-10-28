@@ -13,12 +13,9 @@ function getSafeNext(raw) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // ถ้าล็อกอินอยู่แล้ว ไม่ต้องให้เห็นหน้า login อีก เด้งไป dashboard ตาม role ทันที
-  if (Api.isLoggedIn()) {
-    const user = Api.getUser();
-    location.href = user && user.role === "staff" ? "staff/dashboard.html" : "student/dashboard.html";
-    return;
-  }
+  // ถ้าล็อกอินอยู่แล้วเซิร์ฟเวอร์เด้งไป dashboard ให้ก่อนถึงหน้านี้ (LoginPageView)
+  // มาถึงตรงนี้แปลว่า session หมดแล้ว — ล้าง token เก่าที่ค้างใน localStorage ทิ้ง
+  Api.clearSession();
 
   const form = document.getElementById("login-form");
   const errorBox = document.getElementById("form-error");
@@ -50,12 +47,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const params = new URLSearchParams(location.search);
     const next = getSafeNext(params.get("next"));
 
-    if (next) {
-      location.href = next;
-    } else if (data.user.role === "staff") {
-      location.href = "staff/dashboard.html";
-    } else {
-      location.href = "student/dashboard.html";
-    }
+    location.href = next || dashboardUrlFor(data.user);
   });
 });

@@ -1,35 +1,10 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#cc2a6c">
-<title>หน้าหลักนักศึกษา — ศูนย์ยืม-คืนอุปกรณ์ไอที</title>
-<link rel="icon" type="image/png" href="../assets/img/favicon.png">
-<link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
-<link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
-<link rel="preload" href="../assets/fonts/anuphan-thai-600-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="../assets/css/style.css">
-</head>
-<body class="antialiased">
+{% extends "frontend/base.html" %}
+{% load static %}
 
-<!-- ===== Header ===== -->
-<header class="site-header">
-  <div class="max-w-6xl mx-auto px-3 sm:px-6 h-16 sm:h-[68px] flex items-center justify-between gap-2 sm:gap-4">
-    <a href="../index.html" class="brand flex-1 min-w-0" aria-label="กลับไปหน้าแรก">
-      <img src="../assets/img/logo.png" alt="" class="brand-logo" width="42" height="42">
-      <span class="min-w-0">
-        <span class="brand-name"><span class="hidden sm:inline">ศูนย์ยืมคืนอุปกรณ์ไอที</span><span class="sm:hidden">ยืมคืนอุปกรณ์</span></span>
-        <span class="brand-sub">หน้าหลักนักศึกษา</span>
-      </span>
-    </a>
-    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-      <img id="navbar-avatar" alt="รูปโปรไฟล์" class="hidden w-10 h-10 rounded-full object-cover avatar-ring">
-      <button id="open-profile-btn" class="btn btn-ghost !min-h-[42px] !py-1.5 !px-0 w-[42px] sm:w-auto sm:!px-5 text-sm whitespace-nowrap" aria-label="โปรไฟล์"><svg class="w-[19px] h-[19px] sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span class="hidden sm:inline">โปรไฟล์</span></button>
-      <button id="logout-btn" class="btn btn-outline-navy !min-h-[42px] !py-1.5 !px-0 w-[42px] sm:w-auto sm:!px-5 text-sm whitespace-nowrap" aria-label="ออกจากระบบ"><svg class="w-[19px] h-[19px] sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="hidden sm:inline">ออกจากระบบ</span></button>
-    </div>
-  </div>
-</header>
+{% block title %}หน้าหลักนักศึกษา — ศูนย์ยืม-คืนอุปกรณ์ไอที{% endblock %}
+
+{% block content %}
+{% include "frontend/partials/_dashboard_header.html" with container="max-w-6xl" role="student" %}
 
 <div id="suspended-banner" class="hidden text-sm text-center py-3 px-4"></div>
 
@@ -171,11 +146,9 @@
     </form>
   </div>
 </div>
+{% endblock %}
 
-<script src="../assets/js/config.js"></script>
-<script src="../assets/js/api.js"></script>
-<script src="../assets/js/auth-guard.js"></script>
-<script src="../assets/js/student-dashboard.js"></script>
-<script src="../assets/js/ui.js" defer></script>
-</body>
-</html>
+{% block scripts %}
+<script src="{% static 'frontend/js/auth-guard.js' %}"></script>
+<script src="{% static 'frontend/js/student-dashboard.js' %}"></script>
+{% endblock %}

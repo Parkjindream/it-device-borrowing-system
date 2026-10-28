@@ -1,0 +1,37 @@
+{% load static %}<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#cc2a6c">
+{% block meta %}{% endblock %}
+<title>{% block title %}ศูนย์ยืมคืนอุปกรณ์ไอที{% endblock %}</title>
+<link rel="icon" type="image/png" href="{% static 'frontend/img/favicon.png' %}">
+<link rel="apple-touch-icon" href="{% static 'frontend/img/apple-touch-icon.png' %}">
+<link rel="preload" href="{% static 'frontend/fonts/anuphan-thai-600-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="{% static 'frontend/css/style.css' %}">
+</head>
+<body class="antialiased">
+
+{% block content %}{% endblock %}
+
+<script>
+/* ที่อยู่ที่ JS ต้องใช้ — Django สร้างให้จากชื่อ url (แทน config.js เดิม)
+   แก้ path ใน frontend/urls.py ที่เดียว JS ตามไปเอง ไม่ต้องไล่แก้ทีละไฟล์ */
+window.APP = {
+  apiBase: "/api",
+  static: "{% static 'frontend/' %}",
+  urls: {
+    home: "{% url 'frontend:home' %}",
+    login: "{% url 'frontend:login' %}",
+    logout: "{% url 'frontend:logout' %}",
+    staff: "{% url 'frontend:staff-dashboard' %}",
+    student: "{% url 'frontend:student-dashboard' %}",
+  },
+};
+</script>
+<script src="{% static 'frontend/js/api.js' %}"></script>
+{% block scripts %}{% endblock %}
+<script src="{% static 'frontend/js/ui.js' %}" defer></script>
+</body>
+</html>

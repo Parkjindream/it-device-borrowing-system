@@ -2,7 +2,16 @@
  * ตัวช่วยกลางสำหรับเรียก Django REST API ทุกจุดในระบบ
  * เก็บ token ไว้ใน localStorage (คีย์ "auth_token") และแปะ header
  * "Authorization: Token <token>" ให้อัตโนมัติทุกครั้งที่มี token อยู่
+ *
+ * ที่อยู่ API/หน้าเว็บ/ไฟล์ static มาจาก window.APP ที่ base.html สร้างไว้ให้
  */
+const API_BASE_URL = window.APP.apiBase;
+
+/** หน้า dashboard ของแต่ละ role */
+function dashboardUrlFor(user) {
+  return user && user.role === "staff" ? APP.urls.staff : APP.urls.student;
+}
+
 const Api = {
   getToken() {
     return localStorage.getItem("auth_token");
@@ -66,13 +75,15 @@ const Api = {
     return { ok: response.ok, status: response.status, data };
   },
 
-  /** token หมดอายุ/ไม่ถูกต้อง → เคลียร์ session แล้วเด้งไปหน้า login (ใช้ path แบบ relative กัน "Cannot GET /login.html") */
+  /**
+   * token หมดอายุ/ไม่ถูกต้อง → เคลียร์ token แล้วไปที่ /logout/ (ล้าง session ฝั่งเซิร์ฟเวอร์ด้วย แล้วเด้งไปหน้า login)
+   * ถ้าไปหน้า login ตรง ๆ ทั้งที่ session ยังอยู่ เซิร์ฟเวอร์จะเด้งกลับ dashboard วนไม่จบ
+   */
   handleUnauthorized(status) {
     if (status !== 401) return;
     this.clearSession();
-    if (!location.pathname.endsWith("login.html")) {
-      const nested = location.pathname.includes("/student/") || location.pathname.includes("/staff/");
-      location.href = `${nested ? "../" : ""}login.html`;
+    if (location.pathname !== APP.urls.login) {
+      location.href = APP.urls.logout;
     }
   },
 
@@ -163,13 +174,13 @@ function formatDate(isoStringOrDate) {
 
 /**
  * ภาพประกอบอุปกรณ์: ถ้าเจ้าหน้าที่อัปโหลดรูปจริงไว้ (eq.image) ใช้รูปนั้นเลย
- * ถ้ายังไม่มี ใช้ภาพประกอบสำเร็จรูปที่เดาจากชื่อรุ่น (อยู่ที่ assets/img/products/)
+ * ถ้ายังไม่มี ใช้ภาพประกอบสำเร็จรูปที่เดาจากชื่อรุ่น (อยู่ที่ static/frontend/img/products/)
+ * หน้าแรก render ฝั่งเซิร์ฟเวอร์ใช้กติกาเดียวกันใน frontend/templatetags/frontend_extras.py — แก้ต้องแก้คู่กัน
  * เพื่อให้นักศึกษาเห็นว่าอุปกรณ์หน้าตาประมาณไหน แม้เจ้าหน้าที่ยังไม่ได้ถ่ายรูปจริงอัปโหลด
  */
 function fallbackEquipmentImage(name) {
   const n = (name || "").toLowerCase();
-  const isNested = location.pathname.includes("/student/") || location.pathname.includes("/staff/");
-  const base = `${isNested ? "../" : ""}assets/img/products/`;
+  const base = `${APP.static}img/products/`;
   if (n.includes("ipad")) return base + "ipad.png";
   if (n.includes("esp32")) return base + "esp32.svg";
   if (n.includes("esp8266")) return base + "esp8266.svg";

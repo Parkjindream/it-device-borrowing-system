@@ -1,8 +1,8 @@
 /** @type {import('tailwindcss').Config} */
-// ตั้งค่า Tailwind สำหรับคอมไพล์ src/styles.css -> assets/css/style.css
+// ตั้งค่า Tailwind สำหรับคอมไพล์ src/styles.css -> static/frontend/css/style.css (รันจากโฟลเดอร์ backend/frontend/)
 // content ครอบคลุมทั้ง HTML และ JS เพราะ student/staff dashboard สร้าง markup ด้วย JS
 module.exports = {
-  content: ["./*.html", "./staff/*.html", "./student/*.html", "./assets/js/*.js"],
+  content: ["./templates/**/*.html", "./static/frontend/js/*.js"],
   theme: {
     extend: {
       fontFamily: {
