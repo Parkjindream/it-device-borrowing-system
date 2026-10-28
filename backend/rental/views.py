@@ -189,7 +189,7 @@ class PasswordResetRequestView(APIView):
         if user is not None:
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = token_generator.make_token(user)
-            # ไม่ได้ตั้ง URL ไว้ -> ใช้โดเมนที่ผู้ใช้เข้ามา (Host ผ่าน ALLOWED_HOSTS แล้ว และคนนอกเข้าได้ทาง tunnel ทางเดียว)
+            # ไม่ได้ตั้ง URL ไว้ -> ใช้โดเมนที่ผู้ใช้เข้ามา (Host ผ่านการตรวจ ALLOWED_HOSTS แล้ว)
             reset_page = settings.FRONTEND_RESET_PASSWORD_URL or request.build_absolute_uri(
                 reverse("frontend:reset-password")
             )

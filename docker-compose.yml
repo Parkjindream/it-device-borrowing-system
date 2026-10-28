@@ -3,24 +3,17 @@
 # ================================================================
 # แบ่งเป็น 2 ไฟล์:
 #   docker-compose.infra.yml  PostgreSQL + MinIO (+ db-backup, pgAdmin ที่ปิดไว้) — รันเดี่ยวได้ตอนพัฒนา
-#   docker-compose.yml        (ไฟล์นี้) migrate + backend + scheduler + cloudflared และ include infra ด้านบน
+#   docker-compose.yml        (ไฟล์นี้) migrate + backend + scheduler และ include infra ด้านบน
 #
 # ใช้งาน:
-#   1) cp .env.docker.example .env   แล้วแก้ค่าในไฟล์ .env ให้ครบ (ดูคอมเมนต์ในไฟล์)
+#   1) cp .env.example .env   แล้วแก้ค่าในไฟล์ .env ให้ครบ (ดูคอมเมนต์ในไฟล์)
 #   2) docker compose up -d --build                              ทั้งระบบ (infra + backend)
 #      docker compose -f docker-compose.infra.yml up -d          เฉพาะ infra (พัฒนาด้วย runserver)
 #      (สร้างตารางในฐานข้อมูล + บัญชีแอดมินจาก DJANGO_SUPERUSER_* ให้อัตโนมัติ)
-#   3) ดู URL สาธารณะของเว็บ (สุ่มใหม่ทุกครั้งที่ container cloudflared เริ่มใหม่):
-#        docker compose logs cloudflared | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com'
-#      ในเครื่องเซิร์ฟเวอร์เองเข้าได้ที่ http://localhost/ (พอร์ตตาม HTTP_PORT)
+#   3) เปิด http://localhost/ (พอร์ตตาม HTTP_PORT)
 #
-# ทางเข้าจากอินเทอร์เน็ตมีทางเดียวคือ Cloudflare Quick Tunnel (service "cloudflared", ไม่ต้องมีบัญชี/token)
-#   ผู้ใช้ -> Cloudflare -> cloudflared -> backend (Django/gunicorn)
-#   Django เสิร์ฟทุกอย่างเอง: หน้าเว็บ (/), API (/api/), static (/static/, WhiteNoise), รูปอัปโหลด (/media/ จาก MinIO)
-# ไม่ต้องเปิดพอร์ต/ทำ port forward ที่ router และไม่ต้องทำใบรับรอง https เอง
-#
-# services ทั้งสองไฟล์อยู่ในโปรเจกต์/เครือข่ายเดียวกัน (docker network) เรียกหากันด้วยชื่อ service
-# (backend เรียก db ว่า "db", minio ว่า "minio", cloudflared เรียก backend ว่า "backend")
+# Django เสิร์ฟทุกอย่างเอง: หน้าเว็บ (/), API (/api/), static (/static/, WhiteNoise), รูปอัปโหลด (/media/ จาก MinIO)
+# services ทั้งสองไฟล์อยู่ในโปรเจกต์/เครือข่ายเดียวกัน เรียกหากันด้วยชื่อ service (backend เรียก db ว่า "db", minio ว่า "minio")
 
 include:
   - docker-compose.infra.yml
@@ -73,19 +66,16 @@ services:
       DB_HOST: ${DB_HOST:-db}
       DB_PORT: ${DB_PORT:-5432}
       <<: *minio-env
-      USE_X_FORWARDED_PROTO: "true"
-      # proxy หน้า Django มี 1 ชั้นคือ cloudflared (ใช้อ่าน IP จริงของผู้ใช้ไว้จำกัดความถี่ login)
-      NUM_PROXIES: "1"
     depends_on:
       migrate:
         condition: service_completed_successfully
-    # ผูกพอร์ตไว้แค่ localhost — คนภายนอกต้องเข้าผ่าน Cloudflare Tunnel เท่านั้น
-    # (ถ้าเปิดให้เข้าตรง ๆ ได้ จะปลอม header Host/X-Forwarded-For/Proto ได้)
+    # ผูกพอร์ตไว้แค่ localhost — ถ้าจะเปิดให้เครื่องอื่นเข้า ให้วาง reverse proxy (https) ไว้ข้างหน้า
+    # แล้วตั้ง USE_X_FORWARDED_PROTO / NUM_PROXIES ใน .env ตามจำนวน proxy
     ports:
       - "127.0.0.1:${HTTP_PORT:-80}:8000"
     entrypoint: *backend-entrypoint
     # --access-logfile - : แสดงทุกคำขอ (รวมที่สำเร็จ) ใน docker compose logs backend
-    #   รูปแบบ: IP(ของ cloudflared) "วิธี path" รหัสตอบกลับ เวลาที่ใช้ — ไม่บันทึกรหัสผ่าน/เนื้อหาคำขอ
+    #   รูปแบบ: IP "วิธี path" รหัสตอบกลับ เวลาที่ใช้ — ไม่บันทึกรหัสผ่าน/เนื้อหาคำขอ
     command: ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60", "--access-logfile", "-", "--access-logformat", "%(h)s \"%(r)s\" %(s)s %(L)ss"]
     extra_hosts:
       - "host.docker.internal:host-gateway"   # ใช้ต่อ PostgreSQL บนเครื่อง host (Linux ต้องมีบรรทัดนี้)
@@ -108,25 +98,3 @@ services:
     command: ["python", "manage.py", "run_scheduler"]
     extra_hosts:
       - "host.docker.internal:host-gateway"   # ใช้ต่อ PostgreSQL บนเครื่อง host (Linux ต้องมีบรรทัดนี้)
-
-  # Cloudflare Quick Tunnel (trycloudflare.com) — ไม่ต้องมีบัญชี/token ได้ URL https สุ่มมาให้
-  # เหมาะกับทดลอง/สาธิต: URL เปลี่ยนทุกครั้งที่ container นี้เริ่มใหม่ และไม่มีการรับประกัน uptime
-  # ใช้จริงระยะยาว: เปลี่ยนเป็น tunnel แบบมี token (ผูกโดเมนตัวเอง) ได้ลิงก์ถาวร ไม่มีป้าย "Dangerous"
-  #   1) Cloudflare Zero Trust > Networks > Tunnels > Create > ได้ token; เพิ่ม Public hostname ชี้ไป  HTTP  backend:8000
-  #   2) ใส่ CLOUDFLARE_TUNNEL_TOKEN=<token> ใน .env
-  #   3) ลบ service cloudflared ด้านล่างนี้ทั้งก้อน แล้วลบ # หน้า service cloudflared-named แทน
-  #   4) ใน .env ตั้งโดเมนใหม่ให้ครบ (ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS / ฐาน URL ในลิงก์อีเมล) แล้ว docker compose up -d
-  # cloudflared-named:
-  #   image: cloudflare/cloudflared:2026.9.3
-  #   restart: unless-stopped
-  #   command: ["tunnel", "--no-autoupdate", "run"]
-  #   environment:
-  #     TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?กรุณาตั้งค่า CLOUDFLARE_TUNNEL_TOKEN ในไฟล์ .env}
-  #   depends_on:
-  #     - backend
-  cloudflared:
-    image: cloudflare/cloudflared:2026.9.3
-    restart: unless-stopped
-    command: ["tunnel", "--no-autoupdate", "--url", "http://backend:8000"]
-    depends_on:
-      - backend

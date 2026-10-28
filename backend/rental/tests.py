@@ -439,12 +439,12 @@ class ApiAndPermissionTests(BaseTestCase):
         resp = APIClient().post("/api/auth/login/", {"email": "harry@example.com", "password": "1234"}, format="json")
         self.assertEqual(resp.status_code, 200)
 
-    @override_settings(FRONTEND_RESET_PASSWORD_URL="", ALLOWED_HOSTS=[".trycloudflare.com"])
+    @override_settings(FRONTEND_RESET_PASSWORD_URL="", ALLOWED_HOSTS=["borrow.example.ac.th"])
     def test_reset_link_uses_request_host_when_url_not_set(self):
         resp = APIClient().post("/api/auth/password-reset/", {"email": self.student.email}, format="json",
-                                HTTP_HOST="abc-def.trycloudflare.com", HTTP_X_FORWARDED_PROTO="https")
+                                HTTP_HOST="borrow.example.ac.th", HTTP_X_FORWARDED_PROTO="https")
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("https://abc-def.trycloudflare.com/reset-password/?uid=", mail.outbox[-1].body)
+        self.assertIn("https://borrow.example.ac.th/reset-password/?uid=", mail.outbox[-1].body)
 
     def test_unit_status_guard(self):
         booking = self.book()

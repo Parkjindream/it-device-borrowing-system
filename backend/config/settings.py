@@ -10,9 +10,9 @@ from decouple import Config, Csv, RepositoryEmpty, RepositoryEnv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# อ่านค่าจากตัวแปรแวดล้อมก่อน แล้วค่อย backend/.env เท่านั้น
-# (ค่าเริ่มต้นของ decouple จะไล่หา .env ขึ้นไปถึงรากโปรเจกต์ แล้วเผลอหยิบ .env ของ docker ที่ DEBUG=False มาใช้ตอน runserver)
-_env_file = BASE_DIR / ".env"
+# .env ไฟล์เดียวที่รากโปรเจกต์ ใช้ร่วมกันทั้ง docker compose และ runserver
+# ตัวแปรแวดล้อมมาก่อนเสมอ (ใน container ไม่มีไฟล์นี้ ค่ามาจาก env_file/environment ของ compose)
+_env_file = BASE_DIR.parent / ".env"
 config = Config(RepositoryEnv(_env_file) if _env_file.exists() else RepositoryEmpty())
 
 # --- ความปลอดภัยพื้นฐาน ---
@@ -100,8 +100,9 @@ DATABASES = {
         "NAME": config("DB_NAME", default="it_lending_db"),
         "USER": config("DB_USER", default="postgres"),
         "PASSWORD": config("DB_PASSWORD", default="postgres"),
+        # ใน container compose ส่ง DB_HOST=db/DB_PORT=5432 มาเอง — runserver ต่อพอร์ตที่ infra เปิดไว้บนเครื่อง
         "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", default="5432"),
+        "PORT": config("DB_PORT", default=config("DB_EXPOSE_PORT", default="5433")),
     }
 }
 
@@ -129,9 +130,13 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"          # รูปอุปกรณ์ที่เจ้าหน้าที่อัปโหลด (ใช้เมื่อไม่ได้ตั้ง MINIO_ENDPOINT)
 
 # --- ที่เก็บไฟล์อัปโหลดบน MinIO (S3) ---
-# docker compose ตั้ง MINIO_ENDPOINT=http://minio:9000 ให้เอง / ตอนพัฒนาบนเครื่องเว้นว่าง = เก็บลง MEDIA_ROOT
-# bucket สร้างให้อัตโนมัติตอน migrate (python manage.py ensure_media_bucket)
-MINIO_ENDPOINT = config("MINIO_ENDPOINT", default="")
+# docker compose ส่ง MINIO_ENDPOINT=http://minio:9000 ให้ container เอง
+# runserver: ถ้า .env มี MINIO_ROOT_USER ใช้ MinIO ของ infra ที่ localhost / ไม่มี = เก็บลง MEDIA_ROOT
+# bucket สร้างตอน migrate ใน docker หรือรันเอง: python manage.py ensure_media_bucket
+_local_minio = ""
+if config("MINIO_ROOT_USER", default=""):
+    _local_minio = f"http://localhost:{config('MINIO_API_PORT', default='9000')}"
+MINIO_ENDPOINT = config("MINIO_ENDPOINT", default=_local_minio)
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
@@ -139,8 +144,8 @@ STORAGES = {
 if MINIO_ENDPOINT:
     STORAGES["default"] = {"BACKEND": "config.storage.MediaStorage"}
     AWS_S3_ENDPOINT_URL = MINIO_ENDPOINT
-    AWS_ACCESS_KEY_ID = config("MINIO_ACCESS_KEY")
-    AWS_SECRET_ACCESS_KEY = config("MINIO_SECRET_KEY")
+    AWS_ACCESS_KEY_ID = config("MINIO_ACCESS_KEY", default=config("MINIO_ROOT_USER", default=""))
+    AWS_SECRET_ACCESS_KEY = config("MINIO_SECRET_KEY", default=config("MINIO_ROOT_PASSWORD", default=""))
     # Django ดึงไฟล์จาก bucket นี้มาเสิร์ฟที่ /media/ (config/urls.py: serve_media_from_storage)
     AWS_STORAGE_BUCKET_NAME = config("MINIO_BUCKET", default="media")
     AWS_S3_REGION_NAME = "us-east-1"
@@ -170,7 +175,7 @@ REST_FRAMEWORK = {
         "password_reset_confirm": "10/hour",
         "public": "120/min",
     },
-    # จำนวน proxy ที่อยู่หน้า Django (docker-compose ตั้ง 2 = cloudflared + nginx) เพื่ออ่าน IP จริงของผู้ใช้
+    # จำนวน reverse proxy ที่อยู่หน้า Django (0 = ไม่มี) เพื่ออ่าน IP จริงของผู้ใช้
     "NUM_PROXIES": config("NUM_PROXIES", default=0, cast=int),
 }
 
