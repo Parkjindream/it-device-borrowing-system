@@ -37,7 +37,7 @@ jobs:
       - name: ติดตั้ง ruff
         run: pip install ruff==0.17.2
 
-      # อ่านการตั้งค่าจาก backend/pyproject.toml (select = E, W, F, I, UP / line-length 120)
+      # อ่านการตั้งค่าจาก backend/ruff.toml (select = E, W, F, I, UP / line-length 120)
       - name: ruff check (ตรวจ lint)
         working-directory: backend
         run: ruff check .

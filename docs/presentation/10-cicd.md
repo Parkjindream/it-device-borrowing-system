@@ -21,7 +21,7 @@ flowchart LR
 
 ทำงานทุก `push` และ `pull_request` มี 2 job:
 
-**1) `lint`** — ติดตั้ง `ruff` แล้วรัน `ruff check .` (อ่านกฎจาก `backend/pyproject.toml`)
+**1) `lint`** — ติดตั้ง `ruff` แล้วรัน `ruff check .` (อ่านกฎจาก `backend/ruff.toml`)
 
 **2) `test`** — ยก **PostgreSQL 16** เป็น service container แล้ว:
 ```yaml
