@@ -1,0 +1,42 @@
+name: Scheduled jobs
+
+# 1) ทุก 30 นาที  -> ?only=expire : ยกเลิกการจองที่ไม่มารับตามเวลา (คืนสต็อก)
+# 2) วันละครั้ง 07:30 เวลาไทย (00:30 UTC) -> เรียกเต็ม : เตือนรายวัน, เกินกำหนด, ปลดพักสิทธิ์, เคลียร์ข้อมูลเก่า
+# เหตุผล: Vercel Hobby รัน cron ได้วันละครั้ง (vercel.json ยังรันรายวันเป็นตัวสำรอง — รันซ้ำได้ ไม่ส่งอีเมลซ้ำ)
+# หมายเหตุ: GitHub รัน schedule เฉพาะ default branch, อาจช้าตอนโหลดสูง และ repo public จะถูกปิด schedule
+#           เมื่อไม่มีกิจกรรม 60 วัน — เปิดใหม่ได้ที่แท็บ Actions
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+    - cron: "30 0 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-run-jobs
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  run-jobs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call /api/cron/run-jobs/
+        env:
+          APP_URL: ${{ secrets.APP_URL }}          # เช่น https://your-app.vercel.app (ไม่มี / ท้าย)
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}  # ค่าเดียวกับ CRON_SECRET บน Vercel
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          set -eu
+          if [ -z "${APP_URL:-}" ] || [ -z "${CRON_SECRET:-}" ]; then
+            echo "ยังไม่ได้ตั้ง secrets APP_URL / CRON_SECRET"; exit 1
+          fi
+          query=""
+          if [ "${EVENT_SCHEDULE:-}" = "*/30 * * * *" ]; then query="?only=expire"; fi
+          code=$(curl -sS -o resp.txt -w "%{http_code}" --max-time 120 \
+            --retry 2 --retry-delay 15 --retry-connrefused \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL%/}/api/cron/run-jobs/${query}")
+          echo "HTTP ${code}"; cat resp.txt; echo
+          test "${code}" = "200"

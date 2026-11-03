@@ -67,6 +67,11 @@ urlpatterns = [
         views.StaffUnsuspendStudentView.as_view(),
         name="staff-unsuspend-student",
     ),
+    path(
+        "staff/students/<int:pk>/set-active/",
+        views.StaffStudentActiveView.as_view(),
+        name="staff-student-set-active",
+    ),
     path("staff/notifications/", views.StaffNotificationListView.as_view(), name="staff-notification-list"),
     path("staff/notifications/clear/", views.StaffNotificationClearView.as_view(), name="staff-notification-clear"),
     path("staff/dashboard-summary/", views.StaffDashboardSummaryView.as_view(), name="staff-dashboard-summary"),

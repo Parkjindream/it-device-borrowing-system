@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import login, logout
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.db import transaction
 from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -69,6 +70,13 @@ from .services import (
 
 logger = logging.getLogger(__name__)
 token_generator = PasswordResetTokenGenerator()
+
+# สถานะการจองที่ "ยังไม่จบ" — นักศึกษาที่มีรายการเหล่านี้ลบ/ปิดบัญชีไม่ได้
+OPEN_BOOKING_STATUSES = (
+    Booking.Status.AWAITING_PICKUP,
+    Booking.Status.BORROWED,
+    Booking.Status.OVERDUE,
+)
 
 
 def equipment_with_counts(qs):
@@ -702,9 +710,11 @@ class StaffStudentListCreateView(APIView):
 
 class StaffStudentDetailView(APIView):
     """
-    PATCH /api/staff/students/<id>/
+    PATCH  /api/staff/students/<id>/
     แก้ไขข้อมูลนักศึกษาที่มีอยู่แล้ว — ใช้เติมรหัสนักศึกษาที่ขาดหาย หรือแก้ชื่อ-นามสกุลให้ถูกต้อง
     (เช่นบัญชีที่เคยถูกสร้างแบบไม่ครบข้อมูลมาก่อน)
+    DELETE /api/staff/students/<id>/
+    ลบบัญชีนักศึกษาที่ "ไม่เคยมีประวัติการยืมเลย" (เช่น เพิ่มผิดคน) — มีประวัติแล้วลบไม่ได้ ให้ใช้ปิดบัญชีแทน
     """
 
     permission_classes = [IsStaffUser]
@@ -729,6 +739,35 @@ class StaffStudentDetailView(APIView):
             setattr(student, field, value.strip() if isinstance(value, str) else value)
         student.save(update_fields=list(data.keys()) if data else ["id"])
         return Response(StaffStudentSerializer(student, context={"request": request}).data)
+
+    def delete(self, request, pk):
+        student = get_object_or_404(User, pk=pk, role=User.Role.STUDENT)
+        if student.bookings.filter(status__in=OPEN_BOOKING_STATUSES).exists():
+            return Response(
+                {"detail": "นักศึกษายังมีรายการจอง/ยืมที่ยังไม่จบ ต้องรับคืนหรือยกเลิกก่อน"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        image = student.profile_image
+        try:
+            with transaction.atomic():
+                student.delete()
+        except ProtectedError:
+            # มีประวัติการยืม (หรือมีคนจองแทรกระหว่างตรวจกับลบ) -> ไม่ลบ แนะนำให้ปิดบัญชีแทน
+            return Response(
+                {
+                    "detail": (
+                        "ลบนักศึกษาคนนี้ไม่ได้ เพราะมีประวัติการยืมอ้างอิงอยู่ (เพื่อรักษาหลักฐาน) "
+                        "ใช้ปุ่ม \"ปิดบัญชี\" แทน — เขาจะเข้าสู่ระบบและจองไม่ได้ แต่ประวัติยังอยู่ครบ"
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if image:  # ลบไฟล์รูปโปรไฟล์ออกจาก storage ด้วย ไม่ให้ไฟล์ค้างหลังลบบัญชี
+            try:
+                image.delete(save=False)
+            except Exception:
+                logger.warning("ลบรูปโปรไฟล์ของนักศึกษาที่ถูกลบไม่สำเร็จ", exc_info=True)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class StaffStudentImportView(APIView):
@@ -785,6 +824,31 @@ class StaffUnsuspendStudentView(APIView):
     def post(self, request, pk):
         student = get_object_or_404(User, pk=pk, role=User.Role.STUDENT)
         student = unsuspend_student(student)
+        return Response(StaffStudentSerializer(student, context={"request": request}).data)
+
+
+class StaffStudentActiveView(APIView):
+    """
+    POST /api/staff/students/<id>/set-active/  {"is_active": false|true}
+    ปิด/เปิดบัญชีนักศึกษา — ปิดแล้วล็อกอิน/จอง/ขอรีเซ็ตรหัสผ่านไม่ได้ แต่ประวัติการยืมยังอยู่ครบ (ทางเลือกแทนการลบ)
+    """
+
+    permission_classes = [IsStaffUser]
+
+    def post(self, request, pk):
+        student = get_object_or_404(User, pk=pk, role=User.Role.STUDENT)
+        is_active = request.data.get("is_active")
+        if not isinstance(is_active, bool):
+            return Response({"detail": "ต้องระบุ is_active เป็น true หรือ false"}, status=status.HTTP_400_BAD_REQUEST)
+        if not is_active and student.bookings.filter(status__in=OPEN_BOOKING_STATUSES).exists():
+            return Response(
+                {"detail": "นักศึกษายังมีรายการจอง/ยืมที่ยังไม่จบ ต้องรับคืนหรือยกเลิกก่อนปิดบัญชี"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        student.is_active = is_active
+        student.save(update_fields=["is_active"])
+        if not is_active:
+            Token.objects.filter(user=student).delete()  # ตัดเซสชันเดิมทันที
         return Response(StaffStudentSerializer(student, context={"request": request}).data)
 
 
@@ -877,22 +941,57 @@ class StaffDashboardSummaryView(APIView):
 # ---------------------------------------------------------------------------
 class CronRunJobsView(APIView):
     """
-    GET /api/cron/run-jobs/ — รันงานอัตโนมัติ 1 รอบ (เหมือน run_scheduler --once)
-    ต้องส่ง Authorization: Bearer <CRON_SECRET> (Vercel Cron ส่งให้เองเมื่อตั้ง CRON_SECRET ในโปรเจกต์)
-    ไม่ได้ตั้ง CRON_SECRET = ปิด endpoint นี้ (404) / งานทุกตัวรันซ้ำได้ไม่ส่งอีเมลซ้ำในวันเดียวกัน
+    GET /api/cron/run-jobs/              — รันทั้ง 2 งาน (ยกเลิกการจองหมดเวลา + งานรายวัน)
+    GET /api/cron/run-jobs/?only=expire  — รันเฉพาะ "ยกเลิกการจองหมดเวลา" (เรียกถี่ ๆ ได้ ไม่มีการส่งเตือนรายวัน)
+
+    ต้องส่ง Authorization: Bearer <CRON_SECRET> (Vercel Cron ส่งให้เองเมื่อตั้ง CRON_SECRET ในโปรเจกต์;
+    GitHub Actions ส่งตาม .github/workflows/cron.yml) ไม่ได้ตั้ง CRON_SECRET = ปิด endpoint นี้ (404)
+
+    งานรายวัน (เตือน/ปลดพักสิทธิ์/เกินกำหนด/เคลียร์ข้อมูลเก่า) จะรันเฉพาะหลัง 07:00 เวลาไทย
+    (ตรงกับที่ run_scheduler เคยทำ ไม่งั้นอีเมลเตือนจะออกตั้งแต่เที่ยงคืน) และรันซ้ำในวันเดียวกันได้
+    ไม่ส่งอีเมลซ้ำ เพราะ jobs.py กันด้วย Booking.last_reminder_sent_date
     """
 
     authentication_classes = []
     permission_classes = [AllowAny]
 
+    DAILY_START_HOUR = 7  # เวลาไทย (TIME_ZONE = Asia/Bangkok)
+
     def get(self, request):
         secret = settings.CRON_SECRET
         if not secret:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        if not hmac.compare_digest(request.headers.get("Authorization", ""), f"Bearer {secret}"):
+        # เทียบเป็น bytes: compare_digest ของ str ล้มด้วย TypeError (-> 500) ถ้า header มีอักขระที่ไม่ใช่ ASCII
+        sent = request.headers.get("Authorization", "").encode("utf-8")
+        if not hmac.compare_digest(sent, f"Bearer {secret}".encode("utf-8")):
             return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        cancel_expired_bookings()
-        run_daily_due_date_checks()
-        logger.info("cron: รันงานอัตโนมัติครบ 1 รอบ")
-        return Response({"detail": "ok"})
+        only_expire = request.query_params.get("only") == "expire"
+        results = {}
+
+        # แยกกัน: งานแรกพัง งานที่สองต้องยังรัน
+        try:
+            cancel_expired_bookings()
+            results["cancel_expired_bookings"] = "ok"
+        except Exception:
+            logger.exception("cron: cancel_expired_bookings ล้มเหลว")
+            results["cancel_expired_bookings"] = "error"
+
+        if not only_expire:
+            if timezone.localtime().hour < self.DAILY_START_HOUR:
+                results["daily_due_date_checks"] = "skipped (ก่อน 07:00 เวลาไทย)"
+            else:
+                try:
+                    run_daily_due_date_checks()
+                    results["daily_due_date_checks"] = "ok"
+                except Exception:
+                    logger.exception("cron: run_daily_due_date_checks ล้มเหลว")
+                    results["daily_due_date_checks"] = "error"
+
+        failed = [k for k, v in results.items() if v == "error"]
+        logger.info("cron: ผลรัน %s", results)
+        # ตอบ 500 เมื่อมีงานล้ม เพื่อให้ GitHub Actions/Vercel แสดงว่าล้มจริง ไม่ใช่เขียวหลอก
+        return Response(
+            {"detail": "ok" if not failed else "some jobs failed", "jobs": results},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR if failed else status.HTTP_200_OK,
+        )
