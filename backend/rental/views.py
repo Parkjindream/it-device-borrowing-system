@@ -77,6 +77,11 @@ OPEN_BOOKING_STATUSES = (
     Booking.Status.BORROWED,
     Booking.Status.OVERDUE,
 )
+# สถานะที่ "จบแล้ว" — ลบประวัติพวกนี้ได้
+FINISHED_BOOKING_STATUSES = (
+    Booking.Status.RETURNED,
+    Booking.Status.CANCELLED,
+)
 
 
 def equipment_with_counts(qs):
@@ -827,6 +832,55 @@ class StaffUnsuspendStudentView(APIView):
         return Response(StaffStudentSerializer(student, context={"request": request}).data)
 
 
+class StaffStudentPurgeView(APIView):
+    """
+    POST /api/staff/students/<id>/delete-with-history/  {"confirm_email": "<อีเมลของนักศึกษาคนนั้น>"}
+    ลบบัญชีนักศึกษา "พร้อมประวัติการยืมที่จบแล้ว (คืนแล้ว/ยกเลิก) ทั้งหมดของเขา" — ใช้ได้แม้เคยยืมมาแล้ว
+    (เช่น จบการศึกษา / ขอลบข้อมูลส่วนบุคคล) — ย้อนกลับไม่ได้ และหลักฐานการยืมของคนนั้นจะหายไปด้วย
+
+    กันพลาด: ต้องพิมพ์อีเมลของนักศึกษายืนยัน / ถ้ายังมีรายการรอรับ-กำลังยืม-เกินกำหนด จะลบไม่ได้
+    ทำทั้งหมดใน transaction เดียว (ล็อกแถวนักศึกษาก่อน เรียงลำดับเดียวกับ create_booking จึงไม่ชนกัน)
+    ถ้าขั้นไหนล้ม ข้อมูลจะไม่ถูกลบเลยสักอย่าง
+    """
+
+    permission_classes = [IsStaffUser]
+
+    def post(self, request, pk):
+        target = get_object_or_404(User, pk=pk, role=User.Role.STUDENT)
+        confirm_email = str(request.data.get("confirm_email", "")).strip().lower()
+        if not confirm_email or confirm_email != (target.email or "").strip().lower():
+            return Response(
+                {"detail": "อีเมลที่พิมพ์ยืนยันไม่ตรงกับบัญชีนี้ จึงยังไม่ได้ลบ"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        image = target.profile_image
+        try:
+            with transaction.atomic():
+                student = User.objects.select_for_update().get(pk=target.pk, role=User.Role.STUDENT)
+                if student.bookings.filter(status__in=OPEN_BOOKING_STATUSES).exists():
+                    return Response(
+                        {"detail": "นักศึกษายังมีรายการจอง/ยืมที่ยังไม่จบ ต้องรับคืนหรือยกเลิกก่อน"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                _, per_model = student.bookings.filter(status__in=FINISHED_BOOKING_STATUSES).delete()
+                deleted_bookings = per_model.get(Booking._meta.label, 0)
+                student.delete()
+        except (ProtectedError, User.DoesNotExist):
+            return Response(
+                {"detail": "ลบไม่สำเร็จ เพราะมีรายการใหม่เข้ามาระหว่างทำรายการ กรุณาลองอีกครั้ง"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if image:  # ลบไฟล์รูปโปรไฟล์ออกจาก storage ด้วย (ไม่ให้ไฟล์ค้างหลังลบบัญชี)
+            try:
+                image.delete(save=False)
+            except Exception:
+                logger.warning("ลบรูปโปรไฟล์ของนักศึกษาที่ถูกลบไม่สำเร็จ", exc_info=True)
+        logger.info("เจ้าหน้าที่ id=%s ลบนักศึกษา id=%s พร้อมประวัติการยืม %s รายการ", request.user.pk, pk, deleted_bookings)
+        return Response({"deleted_bookings": deleted_bookings})
+
+
 class StaffStudentActiveView(APIView):
     """
     POST /api/staff/students/<id>/set-active/  {"is_active": false|true}
@@ -962,8 +1016,8 @@ class CronRunJobsView(APIView):
         if not secret:
             return Response(status=status.HTTP_404_NOT_FOUND)
         # เทียบเป็น bytes: compare_digest ของ str ล้มด้วย TypeError (-> 500) ถ้า header มีอักขระที่ไม่ใช่ ASCII
-        sent = request.headers.get("Authorization", "").encode("utf-8")
-        if not hmac.compare_digest(sent, f"Bearer {secret}".encode("utf-8")):
+        sent = request.headers.get("Authorization", "").encode()
+        if not hmac.compare_digest(sent, f"Bearer {secret}".encode()):
             return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
 
         only_expire = request.query_params.get("only") == "expire"

@@ -134,6 +134,70 @@ class SetActiveTests(Base):
         self.assertEqual(len(mail.outbox), 0)
 
 
+class PurgeStudentTests(Base):
+    """ลบนักศึกษาพร้อมประวัติการยืมที่จบแล้ว (ต้องพิมพ์อีเมลยืนยัน)"""
+
+    def purge(self, student, email=None, client=None):
+        body = {} if email is None else {"confirm_email": email}
+        return (client or self.api).post(self.url(student.pk, "delete-with-history/"), body, format="json")
+
+    def test_purge_student_with_history_deletes_account_and_own_history_only(self):
+        NotificationLog.objects.create(
+            user=self.s_hist, booking=self.b_done, trigger=NotificationLog.Trigger.BOOKING_CONFIRMED,
+            email_to=self.s_hist.email, is_success=True,
+        )
+        r = self.purge(self.s_hist, "B@X.ac.th")  # ไม่สนตัวพิมพ์เล็ก/ใหญ่
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["deleted_bookings"], 1)
+        self.assertFalse(User.objects.filter(pk=self.s_hist.pk).exists())
+        self.assertFalse(Booking.objects.filter(pk=self.b_done.pk).exists())
+        self.assertFalse(NotificationLog.objects.filter(email_to="b@x.ac.th").exists())
+        # ของคนอื่นต้องไม่ถูกแตะ
+        self.assertTrue(User.objects.filter(pk=self.s_open.pk).exists())
+        self.assertTrue(Booking.objects.filter(pk=self.b_open.pk).exists())
+
+    def test_purge_student_without_history(self):
+        r = self.purge(self.s_no_hist, self.s_no_hist.email)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["deleted_bookings"], 0)
+        self.assertFalse(User.objects.filter(pk=self.s_no_hist.pk).exists())
+
+    def test_wrong_or_missing_email_deletes_nothing(self):
+        for bad in (None, "", "wrong@x.ac.th", "   "):
+            self.assertEqual(self.purge(self.s_hist, bad).status_code, 400, bad)
+        self.assertTrue(User.objects.filter(pk=self.s_hist.pk).exists())
+        self.assertTrue(Booking.objects.filter(pk=self.b_done.pk).exists())
+
+    def test_open_booking_blocks_and_nothing_is_deleted(self):
+        # มีทั้งประวัติที่จบแล้วและรายการค้าง -> ต้องไม่ลบอะไรเลย (ไม่ลบประวัติไปก่อนแล้วค่อยพัง)
+        today = timezone.localdate()
+        Booking.objects.create(
+            student=self.s_open, unit=self.u1, status="returned", requested_start_date=today,
+            requested_end_date=today, booking_expires_at=timezone.now(),
+        )
+        r = self.purge(self.s_open, self.s_open.email)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("ยังไม่จบ", r.data["detail"])
+        self.assertTrue(User.objects.filter(pk=self.s_open.pk).exists())
+        self.assertEqual(Booking.objects.filter(student=self.s_open).count(), 2)
+
+    def test_student_cannot_purge(self):
+        c = APIClient()
+        c.force_authenticate(self.s_hist)
+        r = self.purge(self.s_no_hist, self.s_no_hist.email, client=c)
+        self.assertEqual(r.status_code, 403)
+        self.assertTrue(User.objects.filter(pk=self.s_no_hist.pk).exists())
+
+    def test_cannot_purge_staff_account(self):
+        other = mk_user("s3@x.ac.th", "staff")
+        self.assertEqual(self.purge(other, other.email).status_code, 404)
+        self.assertTrue(User.objects.filter(pk=other.pk).exists())
+
+    def test_unauthenticated(self):
+        r = self.purge(self.s_no_hist, self.s_no_hist.email, client=APIClient())
+        self.assertEqual(r.status_code, 401)
+
+
 @override_settings(CRON_SECRET="s3cret-value")
 class CronTests(Base):
     URL = "/api/cron/run-jobs/"

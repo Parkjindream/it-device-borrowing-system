@@ -68,6 +68,11 @@ urlpatterns = [
         name="staff-unsuspend-student",
     ),
     path(
+        "staff/students/<int:pk>/delete-with-history/",
+        views.StaffStudentPurgeView.as_view(),
+        name="staff-student-purge",
+    ),
+    path(
         "staff/students/<int:pk>/set-active/",
         views.StaffStudentActiveView.as_view(),
         name="staff-student-set-active",

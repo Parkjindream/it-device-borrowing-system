@@ -620,11 +620,14 @@ async function loadStudentList() {
           <p class="text-xs text-[var(--ink)]/55 mt-0.5">
             รหัสนักศึกษา ${escapeHtml(s.student_id || "-")}
             ${s.is_currently_suspended ? `· <span class="text-[#c33c3c]">พักสิทธิ์ถึง ${s.suspended_until ? formatDate(s.suspended_until) : "-"}</span>` : ""}
+            ${s.is_active === false ? `· <span class="text-[#c33c3c]">บัญชีถูกปิด</span>` : ""}
           </p>
         </div>
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         ${s.is_currently_suspended ? `<button data-student-id="${s.id}" class="btn btn-outline-navy !py-1.5 !px-3 text-xs unsuspend-row-btn">ปลดล็อก</button>` : ""}
+        <button data-student-id="${s.id}" data-active="${s.is_active ? "1" : "0"}" class="btn btn-outline-navy !py-1.5 !px-3 text-xs student-active-btn">${s.is_active ? "ปิดบัญชี" : "เปิดบัญชี"}</button>
+        <button data-student-id="${s.id}" data-name="${escapeHtml(`${s.first_name} ${s.last_name}`.trim() || s.email)}" data-email="${escapeHtml(s.email)}" class="btn btn-outline-navy !py-1.5 !px-3 text-xs student-delete-btn" style="color:#c33c3c;border-color:#c33c3c;">ลบ</button>
       </div>
     </div>
   `).join("");
@@ -633,6 +636,42 @@ async function loadStudentList() {
     btn.addEventListener("click", async () => {
       const { ok: unsuspendOk, data: unsuspendData } = await Api.post(`/staff/students/${btn.dataset.studentId}/unsuspend/`, null);
       if (!unsuspendOk) { alert(extractErrorMessage(unsuspendData, "ปลดล็อกไม่สำเร็จ")); return; }
+      loadStudentList();
+    });
+  });
+
+  // ปิด/เปิดบัญชี: ปิดแล้วล็อกอิน/จองไม่ได้ แต่ประวัติการยืมยังอยู่ครบ (ทางเลือกแทนการลบสำหรับคนที่เคยยืมแล้ว)
+  list.querySelectorAll(".student-active-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const turningOff = btn.dataset.active === "1";
+      if (turningOff && !confirm("ปิดบัญชีนี้? นักศึกษาจะเข้าสู่ระบบและจองไม่ได้ (ประวัติการยืมยังอยู่ครบ เปิดคืนได้ภายหลัง)")) return;
+      btn.disabled = true;
+      const { ok: activeOk, data: activeData } = await Api.post(
+        `/staff/students/${btn.dataset.studentId}/set-active/`,
+        { is_active: !turningOff },
+      );
+      if (!activeOk) { alert(extractErrorMessage(activeData, "ทำรายการไม่สำเร็จ")); btn.disabled = false; return; }
+      loadStudentList();
+    });
+  });
+
+  // ลบถาวร "พร้อมประวัติการยืมที่จบแล้วทั้งหมดของนักศึกษาคนนั้น" — ต้องพิมพ์อีเมลของเขายืนยัน
+  // (backend ปฏิเสธถ้ายังมีรายการรอรับ/กำลังยืม/เกินกำหนด หรืออีเมลที่พิมพ์ไม่ตรง)
+  list.querySelectorAll(".student-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const typed = prompt(
+        `ลบบัญชี "${btn.dataset.name}" ถาวร พร้อมประวัติการยืมที่จบแล้วทั้งหมดของเขา\n`
+        + "(ย้อนกลับไม่ได้ และหลักฐานการยืม-คืนของคนนี้จะหายไปด้วย)\n\n"
+        + `พิมพ์อีเมลของเขาเพื่อยืนยัน: ${btn.dataset.email}`,
+      );
+      if (typed === null) return; // กดยกเลิก
+      btn.disabled = true;
+      const { ok: delOk, data: delData } = await Api.post(
+        `/staff/students/${btn.dataset.studentId}/delete-with-history/`,
+        { confirm_email: typed.trim() },
+      );
+      if (!delOk) { alert(extractErrorMessage(delData, "ลบไม่สำเร็จ")); btn.disabled = false; return; }
+      alert(`ลบบัญชีแล้ว (ลบประวัติการยืมไปด้วย ${delData.deleted_bookings} รายการ)`);
       loadStudentList();
     });
   });
