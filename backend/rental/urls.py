@@ -11,6 +11,7 @@ urlpatterns = [
     path("auth/me/", views.MeView.as_view(), name="me"),
     path("auth/change-password/", views.ChangePasswordView.as_view(), name="change-password"),
     path("auth/password-reset/", views.PasswordResetRequestView.as_view(), name="password-reset"),
+    path("auth/password-reset-validate/", views.PasswordResetValidateView.as_view(), name="password-reset-validate"),
     path("auth/password-reset-confirm/", views.PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
 
     # --- โมดูล B: คลังอุปกรณ์ (สาธารณะ + ผู้ที่ล็อกอิน) ---

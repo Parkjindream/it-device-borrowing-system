@@ -243,25 +243,45 @@ def build_frontend_base_url(request):
     return f"{request.scheme}://{request.get_host()}"
 
 
-def notify_account_created(user, base_url):
-    """ส่งอีเมลแจ้งว่าถูกเพิ่มเข้าระบบ พร้อมลิงก์ตั้งรหัสผ่านครั้งแรก"""
+def notify_account_created(user, base_url, reminder=False):
+    """
+    ส่งอีเมลแจ้งว่าถูกเพิ่มเข้าระบบ พร้อมลิงก์ตั้งรหัสผ่านครั้งแรก
+    reminder=True: ส่งซ้ำให้คนที่ยังไม่ได้ตั้งรหัสผ่าน (ลิงก์ฉบับก่อนหมดอายุ 24 ชั่วโมงไปแล้ว) — ใช้ลิงก์ใหม่ล่าสุดเสมอ
+    """
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = PasswordResetTokenGenerator().make_token(user)
     link = f"{base_url}{reverse('frontend:reset-password')}?uid={uid}&token={token}"
     name = f"{user.first_name} {user.last_name}".strip() or user.email
     code_line = f"รหัสนักศึกษา: {user.student_id}\n" if user.student_id else ""
-    subject = "คุณถูกเพิ่มเข้าสู่ระบบยืม-คืนอุปกรณ์ไอที — ตั้งรหัสผ่านของคุณ"
+    if reminder:
+        subject = "เตือน: คุณยังไม่ได้ตั้งรหัสผ่าน — ระบบยืม-คืนอุปกรณ์ไอที"
+        intro = (
+            "ระบบยังไม่พบว่าคุณตั้งรหัสผ่านสำหรับบัญชีในระบบยืม-คืนอุปกรณ์ไอที จึงส่งลิงก์ใหม่ให้อีกครั้ง\n"
+            "(ลิงก์ฉบับก่อนหน้าอาจหมดอายุแล้ว)\n"
+        )
+        outro = (
+            "ลิงก์นี้ใช้ได้ 24 ชั่วโมง และใช้ได้เพียงครั้งเดียว — เมื่อคุณตั้งรหัสผ่านแล้ว ลิงก์จะใช้ไม่ได้อีก\n"
+            "ระบบจะส่งลิงก์ใหม่ให้ทุกวันจนกว่าคุณจะตั้งรหัสผ่านเอง\n"
+            "หากคุณไม่ได้คาดหวังอีเมลนี้ กรุณาเพิกเฉย"
+        )
+    else:
+        subject = "คุณถูกเพิ่มเข้าสู่ระบบยืม-คืนอุปกรณ์ไอที — ตั้งรหัสผ่านของคุณ"
+        intro = "เจ้าหน้าที่ได้เพิ่มคุณเข้าสู่ระบบยืม-คืนอุปกรณ์ไอทีเรียบร้อยแล้ว\n"
+        outro = (
+            "ลิงก์นี้ใช้ได้ 24 ชั่วโมง และใช้ได้เพียงครั้งเดียว — หากคุณยังไม่ได้ตั้งรหัสผ่านภายในเวลานี้ "
+            "ระบบจะส่งลิงก์ใหม่ให้อัตโนมัติ\n"
+            "หากคุณไม่ได้คาดหวังอีเมลนี้ กรุณาเพิกเฉย"
+        )
     message = (
         f"สวัสดี {name}\n\n"
-        f"เจ้าหน้าที่ได้เพิ่มคุณเข้าสู่ระบบยืม-คืนอุปกรณ์ไอทีเรียบร้อยแล้ว\n"
+        f"{intro}"
         f"อีเมลสำหรับเข้าสู่ระบบ: {user.email}\n"
         f"{code_line}\n"
         f"กรุณาคลิกลิงก์นี้เพื่อตั้งรหัสผ่านของคุณเอง:\n{link}\n\n"
-        f"ลิงก์นี้ใช้ได้ 24 ชั่วโมง หากหมดอายุแล้ว ให้กด \"ลืมรหัสผ่าน\" ที่หน้าเข้าสู่ระบบเพื่อขอลิงก์ใหม่\n"
-        f"หากคุณไม่ได้คาดหวังอีเมลนี้ กรุณาเพิกเฉย"
+        f"{outro}"
     )
     trigger = getattr(NotificationLog.Trigger, "ACCOUNT_CREATED", NotificationLog.Trigger.PASSWORD_RESET_REQUESTED)
-    _send(user, trigger, subject, message)
+    return _send(user, trigger, subject, message)
 
 
 def notify_password_reset(user, reset_link):

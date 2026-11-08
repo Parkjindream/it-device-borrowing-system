@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from datetime import time as dtime
 from unittest import mock
 
+from django.conf import settings
 from django.core import mail
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -31,6 +32,9 @@ from .models import (
     User,
 )
 from .services import BookingError, confirm_pickup, confirm_return, create_booking
+
+# ที่เก็บไฟล์แบบดิสก์ — ใช้ในเทสต์ที่ต้องดูไฟล์บนดิสก์จริง ไม่ให้ขึ้นกับ MINIO_* ของเครื่องที่รัน
+LOCAL_DISK_STORAGE = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
 
 
 class BaseTestCase(TestCase):
@@ -416,7 +420,12 @@ class ApiAndPermissionTests(BaseTestCase):
             daily.assert_called_once()
 
     def test_testflight_passes_and_cleans_up_test_file(self):
-        with tempfile.TemporaryDirectory() as media, override_settings(MEDIA_ROOT=media, MINIO_ENDPOINT=""):
+        # ต้องบังคับ STORAGES ให้เป็นดิสก์ด้วย: ใน Docker มี MINIO_ENDPOINT ใน environment ทำให้ default_storage เป็น MinIO
+        # (override_settings(MINIO_ENDPOINT="") อย่างเดียวไม่เปลี่ยน default_storage ที่ตั้งไปแล้ว) เทสต์จึงมองไม่เห็นไฟล์บนดิสก์
+        storages = {**settings.STORAGES, "default": LOCAL_DISK_STORAGE}
+        with tempfile.TemporaryDirectory() as media, override_settings(
+            MEDIA_ROOT=media, MINIO_ENDPOINT="", STORAGES=storages,
+        ):
             out = io.StringIO()
             call_command("testflight", stdout=out)
             self.assertIn("testflight ผ่านทั้งหมด", out.getvalue())

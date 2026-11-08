@@ -214,6 +214,44 @@ class PasswordResetRequestView(APIView):
         return Response({"detail": "หากอีเมลนี้มีอยู่ในระบบ เราได้ส่งลิงก์ตั้งรหัสผ่านไปให้แล้ว"})
 
 
+def _user_from_reset_link(uid, token):
+    """
+    หาผู้ใช้จาก uid + token ในลิงก์ตั้งรหัสผ่าน — คืน None ถ้าลิงก์ใช้ไม่ได้ (ปลอม/หมดอายุ 24 ชม./ถูกใช้ไปแล้ว)
+    ลิงก์ผูกกับรหัสผ่านปัจจุบัน: พอตั้งรหัสผ่านใหม่แล้ว ลิงก์ทุกฉบับที่เคยส่งไปจะใช้ไม่ได้ทันที
+    บัญชีที่ถูกปิดก็ใช้ลิงก์ไม่ได้ (เจ้าหน้าที่ปิดไว้ = ไม่ให้เข้าระบบ)
+    """
+    try:
+        pk = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=pk)
+    except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+        return None
+    if not user.is_active or not token_generator.check_token(user, token):
+        return None
+    return user
+
+
+class PasswordResetValidateView(APIView):
+    """
+    POST /api/auth/password-reset-validate/  {uid, token}
+    หน้าตั้งรหัสผ่านเรียกตอน "เปิดหน้า" เพื่อรู้ทันทีว่าลิงก์ยังใช้ได้ไหม (ไม่ต้องรอให้กรอกรหัสผ่านแล้วค่อยรู้)
+    ไม่ส่งข้อมูลของผู้ใช้กลับไปเลย — ตอบแค่ใช้ได้/ใช้ไม่ได้
+    """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "password_reset_validate"
+
+    def post(self, request):
+        uid = str(request.data.get("uid", "")).strip()
+        token = str(request.data.get("token", "")).strip()
+        if not uid or not token or _user_from_reset_link(uid, token) is None:
+            return Response(
+                {"detail": "ลิงก์นี้หมดอายุหรือถูกใช้ไปแล้ว"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response({"valid": True})
+
+
 class PasswordResetConfirmView(APIView):
     """POST /api/auth/password-reset-confirm/  {uid, token, new_password}"""
 
@@ -227,13 +265,8 @@ class PasswordResetConfirmView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        try:
-            uid = force_str(urlsafe_base64_decode(data["uid"]))
-            user = User.objects.get(pk=uid)
-        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
-            return Response({"detail": "ลิงก์ไม่ถูกต้อง"}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not token_generator.check_token(user, data["token"]):
+        user = _user_from_reset_link(data["uid"], data["token"])
+        if user is None:
             return Response({"detail": "ลิงก์หมดอายุหรือถูกใช้ไปแล้ว"}, status=status.HTTP_400_BAD_REQUEST)
 
         user.set_password(data["new_password"])
@@ -1036,7 +1069,7 @@ class CronRunJobsView(APIView):
                 results["daily_due_date_checks"] = "skipped (ก่อน 07:00 เวลาไทย)"
             else:
                 try:
-                    run_daily_due_date_checks()
+                    run_daily_due_date_checks(base_url=build_frontend_base_url(request))
                     results["daily_due_date_checks"] = "ok"
                 except Exception:
                     logger.exception("cron: run_daily_due_date_checks ล้มเหลว")
