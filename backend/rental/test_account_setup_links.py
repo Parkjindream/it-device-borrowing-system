@@ -129,6 +129,18 @@ class LinkValidationTests(TestCase):
         self.api.post(CONFIRM, {**data, "new_password": NEW_PASSWORD}, format="json")
         self.assertEqual(self.api.post(VALIDATE, data, format="json").status_code, 400)
 
+    def test_pending_student_can_request_a_new_link_via_forgot_password(self):
+        """คนที่ยังไม่เคยตั้งรหัสผ่านกด 'ลืมรหัสผ่าน' เพื่อขอลิงก์ใหม่เองได้ และลิงก์ที่ได้ใช้งานได้"""
+        r = self.api.post("/api/auth/password-reset/", {"email": self.user.email}, format="json")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual([m.to[0] for m in mail.outbox], ["new@x.ac.th"])
+        query = mail.outbox[0].body.split("/reset-password/?", 1)[1].split()[0]
+        parts = dict(kv.split("=") for kv in query.split("&"))
+        self.assertEqual(self.api.post(VALIDATE, parts, format="json").status_code, 200)
+        done = self.api.post(CONFIRM, {**parts, "new_password": NEW_PASSWORD}, format="json")
+        self.assertEqual(done.status_code, 200)
+        self.assertEqual(self.api.post(VALIDATE, parts, format="json").status_code, 400)
+
 
 @override_settings(FRONTEND_URL=BASE)
 class ResendPendingSetupTests(TestCase):

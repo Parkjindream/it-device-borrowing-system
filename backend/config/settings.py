@@ -4,6 +4,8 @@ Django settings สำหรับระบบยืม-คืนอุปกร
 ค่าที่ต่างกันระหว่างเครื่องนักพัฒนา/เซิร์ฟเวอร์จริง อ่านจากไฟล์ .env (หรือ environment variable
 ใน Docker) ทั้งหมด — ไม่ hardcode รหัสผ่านหรือคีย์ลับไว้ในโค้ด
 """
+import sys
+import warnings
 from pathlib import Path
 
 from decouple import Config, Csv, RepositoryEmpty, RepositoryEnv
@@ -253,3 +255,11 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": config("LOG_LEVEL", default="INFO")},
 }
+
+# เวลารัน `python manage.py test`: เทสต์หลายข้อตั้งใจจำลองเหตุผิดพลาด (ลิงก์เสีย, ไม่มีสิทธิ์, อีเมลพัง, งานล้ม)
+# ซึ่งระบบจะ log ออกหน้าจอเป็น Bad Request/Traceback — ไม่ใช่ข้อผิดพลาดจริง จึงปิดการแสดงผลเฉพาะตอนรันเทสต์
+# (ผลผ่าน/ไม่ผ่านไม่ได้ขึ้นกับ log; เทสต์ที่ต้องตรวจ log ใช้ assertLogs ซึ่งยังทำงานปกติ ส่วนตอนใช้งานจริง log ครบเหมือนเดิม)
+if len(sys.argv) > 1 and sys.argv[1] == "test":
+    LOGGING["handlers"]["console"]["level"] = "CRITICAL"
+    # whitenoise เตือนว่าไม่มีโฟลเดอร์ staticfiles ใน container (ไม่เกี่ยวกับเทสต์)
+    warnings.filterwarnings("ignore", message="No directory at", category=UserWarning)
